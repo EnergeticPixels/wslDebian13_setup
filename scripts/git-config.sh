@@ -8,11 +8,18 @@ source "$SCRIPT_DIR/lib/gpg_batch.sh"
 load_repo_env
 require_env_vars GIT_NAME GIT_EMAIL
 
-target_user="${SUDO_USER:-${USER:-}}"
-target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+target_user=""
+target_home="$HOME"
 
-if [[ -z "$target_home" ]]; then
-	target_home="$HOME"
+if [[ "$(id -u)" -eq 0 ]]; then
+	target_user="${SUDO_USER:-${USER:-}}"
+	if [[ -n "$target_user" ]]; then
+		target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+	fi
+
+	if [[ -z "$target_home" ]]; then
+		target_home="$HOME"
+	fi
 fi
 
 gitconfig_path="$target_home/.gitconfig"

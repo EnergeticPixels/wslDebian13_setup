@@ -38,8 +38,42 @@ bootstrap_env_file() {
 	fi
 }
 
+setup_logging() {
+	local target_user target_home log_dir timestamp log_file_name latest_log_path
+
+	target_user="${SUDO_USER:-}"
+	target_home="$HOME"
+
+	if [[ -n "$target_user" ]]; then
+		target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+	fi
+
+	if [[ -z "$target_home" ]]; then
+		target_home="$HOME"
+	fi
+
+	log_dir="$target_home/.debian_build/logs"
+	timestamp="$(date +'%Y%m%d_%H%M%S')"
+	LOG_FILE="$log_dir/provision_${timestamp}.log"
+	log_file_name="$(basename "$LOG_FILE")"
+	latest_log_path="$log_dir/latest.log"
+
+	mkdir -p "$log_dir"
+	touch "$LOG_FILE"
+	ln -sfn "$log_file_name" "$latest_log_path"
+
+	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "$target_user" ]]; then
+		chown "$target_user:$target_user" "$log_dir" "$LOG_FILE" "$latest_log_path" 2>/dev/null || true
+	fi
+
+	exec > >(tee -a "$LOG_FILE") 2>&1
+	log "Writing detailed log to $LOG_FILE"
+}
+
 run_core_script() {
 	local script_path="$1"
+	local script_name
+	script_name="$(basename "$script_path")"
 
 	if [[ ! -f "$script_path" ]]; then
 		log "Skipping missing script: $script_path"
@@ -47,7 +81,19 @@ run_core_script() {
 	fi
 
 	chmod +x "$script_path"
-	log "Running $(basename "$script_path")"
+	log "Running $script_name"
+
+	# User-level configuration scripts should run as the invoking sudo user
+	# so files are created in that user's home directory instead of /root.
+	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" ]]; then
+		case "$script_name" in
+			ssh_gen.sh|gpg_gen.sh|git-config.sh)
+				sudo -u "$SUDO_USER" -H bash "$script_path"
+				return
+				;;
+		esac
+	fi
+
 	bash "$script_path"
 }
 
@@ -70,6 +116,7 @@ run_modules() {
 main() {
 	require_root
 	export DEBIAN_FRONTEND=noninteractive
+	setup_logging
 
 	log "Starting Debian provisioning"
 	# apt-get update
