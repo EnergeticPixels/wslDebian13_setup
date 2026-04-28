@@ -28,3 +28,6 @@ sudo bash begin_here.sh
 
 ### Constraints
 This repo is targeted for Windows 11 host with WSL2 and Debian (Trixie) distribution.
+If you want tmux configured automatically, set `TMUX_CONFIG_URL` in `.env` to your raw Gist URL for `.tmux.conf`.
+Example: https://gist.github.com/<your-github-username>/<gist-hash>/raw/<your-gist-filename>
+If no URL is provided, the provisioning flow skips tmux installation and continues normally.  You can always install tmux after the automated provisioning scripts complete.
