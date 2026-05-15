@@ -127,6 +127,9 @@ main() {
 	log "Starting multiplexer setup (tmux)"
 	run_core_script "$SCRIPTS_DIR/tmux_install.sh"
 	log "Completed multiplexer setup (tmux)"
+	log "Starting editor setup (neovim)"
+	run_core_script "$SCRIPTS_DIR/neovim_install.sh"
+	log "Completed editor setup (neovim)"
 
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"

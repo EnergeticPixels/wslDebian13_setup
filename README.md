@@ -20,6 +20,21 @@ sudo apt dist-upgrade
 sudo bash begin_here.sh
 ```
 
+### Install Neovim 0.12 only
+If you only want Neovim (without running the full provisioning flow):
+
+```bash
+sudo NEOVIM_VERSION=0.12.0 bash scripts/neovim_install.sh
+```
+
+The installer:
+- Supports amd64 and arm64
+- Downloads Neovim from the official GitHub release assets
+- Verifies the SHA-256 checksum before installation
+- Installs to /opt/nvim and symlinks /usr/local/bin/nvim
+
+You can also set NEOVIM_VERSION in .env (default: 0.12.0) and run the regular flow with begin_here.sh.
+
 ### Developed with
 
 
