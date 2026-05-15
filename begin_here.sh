@@ -119,7 +119,7 @@ main() {
 	setup_logging
 
 	log "Starting Debian provisioning"
-	# apt-get update
+	apt-get update
 	# apt-get dist-upgrade -y
 	apt-get install -y "${BASE_PACKAGES[@]}"
 
@@ -130,6 +130,9 @@ main() {
 	log "Starting editor setup (neovim)"
 	run_core_script "$SCRIPTS_DIR/neovim_install.sh"
 	log "Completed editor setup (neovim)"
+	log "Starting web server setup"
+	run_core_script "$SCRIPTS_DIR/web_server_install.sh"
+	log "Completed web server setup"
 
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"

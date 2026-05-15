@@ -46,3 +46,15 @@ This repo is targeted for Windows 11 host with WSL2 and Debian (Trixie) distribu
 If you want tmux configured automatically, set `TMUX_CONFIG_URL` in `.env` to your raw Gist URL for `.tmux.conf`.
 Example: https://gist.github.com/<your-github-username>/<gist-hash>/raw/<your-gist-filename>
 If no URL is provided, the provisioning flow skips tmux installation and continues normally.  You can always install tmux after the automated provisioning scripts complete.
+
+Set `WEB_SERVER` in `.env` to choose which web server gets installed during provisioning:
+- `WEB_SERVER=apache` installs Apache (`apache2` package)
+- `WEB_SERVER=nginx` installs Nginx (`nginx` package)
+
+If `WEB_SERVER` is not set, the web server install step is skipped.
+`web_server` is also accepted for compatibility.
+
+Web server scripts are split for future per-server customization:
+- `scripts/web_server_install.sh` selects which installer to run based on `WEB_SERVER`
+- `scripts/web_server_apache_install.sh` handles Apache installation/configuration
+- `scripts/web_server_nginx_install.sh` handles Nginx installation/configuration
