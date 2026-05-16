@@ -15,6 +15,7 @@ BASE_PACKAGES=(
 	wget
 	build-essential
 	libssl-dev
+	ripgrep
 )
 
 log() {
