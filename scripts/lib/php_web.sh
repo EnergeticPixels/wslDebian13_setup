@@ -173,7 +173,7 @@ build_php_extension_package_list() {
 
 filter_php_extension_packages_by_availability() {
 	local package_name candidate extension_name
-	local -a installable_packages installable_extensions missing_packages missing_extensions
+	local -a installable_packages=() installable_extensions=() missing_packages=() missing_extensions=()
 
 	for package_name in "${PHP_EXTENSION_PACKAGES[@]}"; do
 		candidate="$(apt-cache policy "$package_name" | awk '/Candidate:/ {print $2}')"
