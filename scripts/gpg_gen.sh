@@ -15,6 +15,39 @@ source "$SCRIPT_DIR/lib/gpg_batch.sh"
 load_repo_env
 require_env_vars GIT_NAME GIT_EMAIL GPG_EXPIRATION
 
+ensure_gpg_tty_shell_init() {
+  local target_user target_home bashrc
+
+  target_user="${SUDO_USER:-}"
+  target_home="$HOME"
+
+  if [[ -n "$target_user" ]]; then
+    target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+  fi
+
+  if [[ -z "$target_home" ]]; then
+    target_home="$HOME"
+  fi
+
+  bashrc="$target_home/.bashrc"
+  touch "$bashrc"
+
+  if ! grep -Fq 'export GPG_TTY=$(tty)' "$bashrc"; then
+    {
+      echo ''
+      echo '# Keep GPG pinentry working in interactive shells.'
+      echo 'export GPG_TTY=$(tty)'
+    } >> "$bashrc"
+    echo "Added GPG_TTY export to $bashrc"
+  fi
+
+  if [[ "${EUID:-$(id -u)}" -eq 0 && -n "$target_user" ]]; then
+    chown "$target_user:$target_user" "$bashrc" 2>/dev/null || true
+  fi
+}
+
+ensure_gpg_tty_shell_init
+
 uid="$GIT_NAME <$GIT_EMAIL>"
 
 prompt_for_gpg_passphrase() {

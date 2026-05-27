@@ -20,6 +20,11 @@ sudo apt dist-upgrade
 sudo bash begin_here.sh
 ```
 
+WSL/GPG note:
+- If signed commits fail with `Inappropriate ioctl for device`, make sure your shell exports `GPG_TTY=$(tty)`.
+- `scripts/gpg_gen.sh` now adds that line to the invoking user's `~/.bashrc` so it persists in new terminals.
+- If GPG pinentry still complains in the current terminal, run `gpg-connect-agent updatestartuptty /bye` once after exporting `GPG_TTY`.
+
 ### Install Neovim 0.12 only
 If you only want Neovim (without running the full provisioning flow):
 
