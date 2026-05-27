@@ -52,6 +52,8 @@ if php_is_enabled; then
 	validate_php_version
 	ensure_php_package_source
 	install_versioned_php_packages
+	resolve_php_extension_packages
+	install_versioned_php_extensions
 	configure_nginx_php_fpm
 
 	log "Configuring Nginx for php-fpm version $PHP_VERSION."

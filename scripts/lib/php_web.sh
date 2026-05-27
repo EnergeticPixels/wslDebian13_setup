@@ -27,9 +27,21 @@ load_web_stack_env() {
 	if [[ -z "${PHP_VERSION:-}" && -n "${php_version:-}" ]]; then
 		PHP_VERSION="$php_version"
 	fi
+	if [[ -z "${PHP_EXTENSIONS_BASELINE:-}" && -n "${php_extensions_baseline:-}" ]]; then
+		PHP_EXTENSIONS_BASELINE="$php_extensions_baseline"
+	fi
+	if [[ -z "${PHP_EXTENSIONS_EXTRA:-}" && -n "${php_extensions_extra:-}" ]]; then
+		PHP_EXTENSIONS_EXTRA="$php_extensions_extra"
+	fi
+	if [[ -z "${PHP_EXTENSIONS_STRICT:-}" && -n "${php_extensions_strict:-}" ]]; then
+		PHP_EXTENSIONS_STRICT="$php_extensions_strict"
+	fi
 
 	PHP_ENABLE="${PHP_ENABLE:-false}"
 	PHP_VERSION="${PHP_VERSION:-7.4}"
+	PHP_EXTENSIONS_BASELINE="${PHP_EXTENSIONS_BASELINE:-common}"
+	PHP_EXTENSIONS_EXTRA="${PHP_EXTENSIONS_EXTRA:-}"
+	PHP_EXTENSIONS_STRICT="${PHP_EXTENSIONS_STRICT:-true}"
 
 	case "$(printf '%s' "$PHP_ENABLE" | tr '[:upper:]' '[:lower:]')" in
 		1|true|yes|y|on)
@@ -44,9 +56,25 @@ load_web_stack_env() {
 			;;
 	esac
 
+	case "$(printf '%s' "$PHP_EXTENSIONS_STRICT" | tr '[:upper:]' '[:lower:]')" in
+		1|true|yes|y|on)
+			PHP_EXTENSIONS_STRICT=true
+			;;
+		0|false|no|n|off)
+			PHP_EXTENSIONS_STRICT=false
+			;;
+		*)
+			echo "Invalid PHP_EXTENSIONS_STRICT '$PHP_EXTENSIONS_STRICT'. Supported values: true/false" >&2
+			exit 1
+			;;
+	esac
+
 	export WEB_SERVER
 	export PHP_ENABLE
 	export PHP_VERSION
+	export PHP_EXTENSIONS_BASELINE
+	export PHP_EXTENSIONS_EXTRA
+	export PHP_EXTENSIONS_STRICT
 }
 
 validate_php_version() {
@@ -59,6 +87,133 @@ validate_php_version() {
 			exit 1
 			;;
 	esac
+}
+
+validate_php_extensions_baseline() {
+	case "$PHP_EXTENSIONS_BASELINE" in
+		common|none)
+			return 0
+			;;
+		*)
+			echo "Invalid PHP_EXTENSIONS_BASELINE '$PHP_EXTENSIONS_BASELINE'. Supported values: common, none" >&2
+			exit 1
+			;;
+	esac
+}
+
+validate_php_extension_name() {
+	local extension_name
+	extension_name="$1"
+
+	if [[ ! "$extension_name" =~ ^[a-z0-9_+-]+$ ]]; then
+		echo "Invalid PHP extension name '$extension_name'. Use lowercase letters, numbers, underscores, plus, or hyphen." >&2
+		exit 1
+	fi
+}
+
+get_php_baseline_extensions() {
+	case "$PHP_EXTENSIONS_BASELINE" in
+		common)
+			echo "mbstring xml curl zip intl gd bcmath mysql opcache readline"
+			;;
+		none)
+			echo ""
+			;;
+	esac
+}
+
+trim_whitespace() {
+	local input
+	input="$1"
+
+	input="${input#"${input%%[![:space:]]*}"}"
+	input="${input%"${input##*[![:space:]]}"}"
+	printf '%s' "$input"
+}
+
+build_php_extension_package_list() {
+	local baseline_names baseline_name extra_name candidate extension_package
+	local -a baseline_array extra_array combined
+	declare -A seen=()
+
+	validate_php_extensions_baseline
+
+	baseline_names="$(get_php_baseline_extensions)"
+	read -r -a baseline_array <<< "$baseline_names"
+
+	for baseline_name in "${baseline_array[@]}"; do
+		if [[ -n "$baseline_name" ]]; then
+			combined+=("$baseline_name")
+		fi
+	done
+
+	if [[ -n "$PHP_EXTENSIONS_EXTRA" ]]; then
+		IFS=',' read -r -a extra_array <<< "$PHP_EXTENSIONS_EXTRA"
+		for extra_name in "${extra_array[@]}"; do
+			candidate="$(trim_whitespace "$extra_name")"
+			if [[ -n "$candidate" ]]; then
+				combined+=("$candidate")
+			fi
+		done
+	fi
+
+	PHP_EXTENSION_NAMES=()
+	PHP_EXTENSION_PACKAGES=()
+
+	for candidate in "${combined[@]}"; do
+		validate_php_extension_name "$candidate"
+		if [[ -z "${seen[$candidate]:-}" ]]; then
+			seen[$candidate]=1
+			PHP_EXTENSION_NAMES+=("$candidate")
+			extension_package="php${PHP_VERSION}-${candidate}"
+			PHP_EXTENSION_PACKAGES+=("$extension_package")
+		fi
+	done
+}
+
+filter_php_extension_packages_by_availability() {
+	local package_name candidate extension_name
+	local -a installable_packages installable_extensions missing_packages missing_extensions
+
+	for package_name in "${PHP_EXTENSION_PACKAGES[@]}"; do
+		candidate="$(apt-cache policy "$package_name" | awk '/Candidate:/ {print $2}')"
+		extension_name="${package_name#php${PHP_VERSION}-}"
+
+		if [[ -z "$candidate" || "$candidate" == "(none)" ]]; then
+			missing_packages+=("$package_name")
+			missing_extensions+=("$extension_name")
+		else
+			installable_packages+=("$package_name")
+			installable_extensions+=("$extension_name")
+		fi
+	done
+
+	if (( ${#missing_packages[@]} > 0 )); then
+		if [[ "$PHP_EXTENSIONS_STRICT" == "true" ]]; then
+			echo "Requested PHP extension packages are unavailable for PHP_VERSION=$PHP_VERSION: ${missing_packages[*]}" >&2
+			echo "Adjust PHP_EXTENSIONS_EXTRA/PHP_EXTENSIONS_BASELINE or choose another PHP_VERSION." >&2
+			exit 1
+		fi
+
+		log "Skipping unavailable PHP extension packages (PHP_EXTENSIONS_STRICT=false): ${missing_packages[*]}"
+	fi
+
+	PHP_EXTENSION_PACKAGES=("${installable_packages[@]}")
+	PHP_EXTENSION_NAMES=("${installable_extensions[@]}")
+}
+
+resolve_php_extension_packages() {
+	build_php_extension_package_list
+	filter_php_extension_packages_by_availability
+}
+
+install_versioned_php_extensions() {
+	if (( ${#PHP_EXTENSION_PACKAGES[@]} == 0 )); then
+		log "No installable PHP extension packages selected."
+		return 0
+	fi
+
+	apt-get install -y "${PHP_EXTENSION_PACKAGES[@]}"
 }
 
 php_is_enabled() {

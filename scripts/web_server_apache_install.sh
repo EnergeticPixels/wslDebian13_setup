@@ -29,6 +29,8 @@ if php_is_enabled; then
 	validate_php_version
 	ensure_php_package_source
 	install_versioned_php_packages
+	resolve_php_extension_packages
+	install_versioned_php_extensions
 
 	log "Configuring Apache for php-fpm version $PHP_VERSION."
 	a2enmod proxy_fcgi setenvif

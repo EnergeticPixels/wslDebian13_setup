@@ -96,8 +96,18 @@ Choose the PHP version in `.env` with `PHP_VERSION`:
 - Supported values: `7.4`, `8.0`, `8.1`, `8.2`, `8.3`
 - Default in `.env.sample`: `PHP_VERSION=7.4`
 
+Configure PHP extension planning with:
+- `PHP_EXTENSIONS_BASELINE=common` for the default extension profile
+- `PHP_EXTENSIONS_BASELINE=none` to disable baseline extension selection
+- `PHP_EXTENSIONS_EXTRA=` for comma-separated extension names (example: `soap,pgsql`)
+- `PHP_EXTENSIONS_STRICT=true` to fail if any requested extension package is unavailable
+- `PHP_EXTENSIONS_STRICT=false` to skip unavailable extension packages with warnings
+
 Behavior details:
 - Apache and Nginx both use `php-fpm` integration
 - The scripts prefer Debian package sources first
 - If the requested version is unavailable in current apt sources, the installer adds the Sury PHP repository and retries package resolution
-- Lowercase keys (`php_enable`, `php_version`) are accepted for compatibility
+- Lowercase keys (`php_enable`, `php_version`, `php_extensions_baseline`, `php_extensions_extra`, `php_extensions_strict`) are accepted for compatibility
+
+Current baseline profile:
+- `common` maps to: `mbstring`, `xml`, `curl`, `zip`, `intl`, `gd`, `bcmath`, `mysql`, `opcache`, `readline`
