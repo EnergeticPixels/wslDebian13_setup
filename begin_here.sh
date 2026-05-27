@@ -88,7 +88,7 @@ run_core_script() {
 	# so files are created in that user's home directory instead of /root.
 	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" ]]; then
 		case "$script_name" in
-			ssh_gen.sh|gpg_gen.sh|git-config.sh)
+			ssh_gen.sh|gpg_gen.sh|git-config.sh|node_install.sh)
 				sudo -u "$SUDO_USER" -H bash "$script_path"
 				return
 				;;
@@ -137,6 +137,9 @@ main() {
 	log "Starting Java server setup"
 	run_core_script "$SCRIPTS_DIR/java_install.sh"
 	log "Completed Java server setup"
+	log "Starting Node.js setup"
+	run_core_script "$SCRIPTS_DIR/node_install.sh"
+	log "Completed Node.js setup"
 
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"

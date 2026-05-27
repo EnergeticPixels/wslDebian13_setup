@@ -64,6 +64,28 @@ Tomcat notes:
 WSL notes:
 - If systemd is not enabled in WSL, services may need to be started manually each session.
 
+### Provision Node.js with NVM
+Node.js provisioning is optional and uses NVM to install and switch versions per user.
+
+Set these in `.env`:
+- `NODE_ENABLE=true` to enable Node.js provisioning (default is false)
+- `NODE_DEFAULT_VERSION=22` to set the default Node version alias
+- `NODE_VERSIONS=22` for a comma-separated list of Node versions to install
+- `NODE_NVM_VERSION=v0.40.3` to pin the NVM installer version
+- `NODE_GLOBAL_PACKAGES=` for future global npm package support (placeholder)
+
+Behavior details:
+- NVM installs into the invoking user's home directory (`~/.nvm`)
+- The script appends NVM init lines to `~/.bashrc` when missing
+- `NODE_DEFAULT_VERSION` is installed and set as NVM default alias
+- If `NODE_DEFAULT_VERSION` is not listed in `NODE_VERSIONS`, it is auto-added
+
+Run Node setup only:
+
+```bash
+sudo bash scripts/node_install.sh
+```
+
 ### Developed with
 
 
