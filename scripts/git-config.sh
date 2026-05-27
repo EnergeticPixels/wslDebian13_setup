@@ -92,4 +92,6 @@ git config --file "$gitconfig_path" user.email "$git_user_email"
 git config --file "$gitconfig_path" user.signingkey "$GPG_KEY_ID"
 git config --file "$gitconfig_path" commit.gpgsign true
 
+git config --file "$gitconfig_path" core.filemode false
+
 echo "Updated git config at $gitconfig_path"
