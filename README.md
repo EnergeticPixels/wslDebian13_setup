@@ -58,3 +58,17 @@ Web server scripts are split for future per-server customization:
 - `scripts/web_server_install.sh` selects which installer to run based on `WEB_SERVER`
 - `scripts/web_server_apache_install.sh` handles Apache installation/configuration
 - `scripts/web_server_nginx_install.sh` handles Nginx installation/configuration
+
+PHP provisioning can be enabled per run:
+- `PHP_ENABLE=true` installs PHP alongside the selected web server
+- `PHP_ENABLE=false` skips PHP installation
+
+Choose the PHP version in `.env` with `PHP_VERSION`:
+- Supported values: `7.4`, `8.0`, `8.1`, `8.2`, `8.3`
+- Default in `.env.sample`: `PHP_VERSION=7.4`
+
+Behavior details:
+- Apache and Nginx both use `php-fpm` integration
+- The scripts prefer Debian package sources first
+- If the requested version is unavailable in current apt sources, the installer adds the Sury PHP repository and retries package resolution
+- Lowercase keys (`php_enable`, `php_version`) are accepted for compatibility

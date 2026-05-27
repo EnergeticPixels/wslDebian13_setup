@@ -10,7 +10,57 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
 	exit 1
 fi
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PHP_WEB_LIB="$SCRIPT_DIR/lib/php_web.sh"
+
+if [[ ! -f "$PHP_WEB_LIB" ]]; then
+	echo "Missing helper library: $PHP_WEB_LIB" >&2
+	exit 1
+fi
+
+# shellcheck source=/dev/null
+source "$PHP_WEB_LIB"
+load_web_stack_env
+
+configure_nginx_php_fpm() {
+	local php_socket snippet_file default_site
+	php_socket="/run/php/php${PHP_VERSION}-fpm.sock"
+	snippet_file="/etc/nginx/snippets/php-fpm.conf"
+	default_site="/etc/nginx/sites-available/default"
+
+	mkdir -p /etc/nginx/snippets
+	cat > "$snippet_file" <<EOF
+location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:${php_socket};
+}
+
+location ~ /\.ht {
+    deny all;
+}
+EOF
+
+	if [[ -f "$default_site" ]] && ! grep -q "include snippets/php-fpm.conf;" "$default_site"; then
+		sed -i '/^[[:space:]]*index /a \    include snippets/php-fpm.conf;' "$default_site"
+	fi
+}
+
 log "Installing Nginx web server (nginx)."
 apt-get install -y nginx
+
+if php_is_enabled; then
+	validate_php_version
+	ensure_php_package_source
+	install_versioned_php_packages
+	configure_nginx_php_fpm
+
+	log "Configuring Nginx for php-fpm version $PHP_VERSION."
+	systemctl enable --now "php${PHP_VERSION}-fpm"
+	nginx -t
+	systemctl restart nginx
+	log "Nginx configured with php-fpm version $PHP_VERSION."
+else
+	log "PHP installation disabled by PHP_ENABLE=false."
+fi
 
 log "Nginx installation complete."

@@ -11,24 +11,29 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
 fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../.env"
 APACHE_SCRIPT="$SCRIPT_DIR/web_server_apache_install.sh"
 NGINX_SCRIPT="$SCRIPT_DIR/web_server_nginx_install.sh"
+PHP_WEB_LIB="$SCRIPT_DIR/lib/php_web.sh"
 
-# Load optional configuration from repo .env.
-if [[ -f "$ENV_FILE" ]]; then
-	# shellcheck source=/dev/null
-	source "$ENV_FILE"
+if [[ ! -f "$PHP_WEB_LIB" ]]; then
+	echo "Missing helper library: $PHP_WEB_LIB" >&2
+	exit 1
 fi
 
-# Backward compatibility for lowercase key names.
-if [[ -z "${WEB_SERVER:-}" && -n "${web_server:-}" ]]; then
-	WEB_SERVER="$web_server"
-fi
+# shellcheck source=/dev/null
+source "$PHP_WEB_LIB"
+load_web_stack_env
 
 if [[ -z "${WEB_SERVER:-}" ]]; then
 	log "WEB_SERVER is not set in .env. Skipping web server installation."
 	exit 0
+fi
+
+if php_is_enabled; then
+	validate_php_version
+	log "PHP provisioning is enabled with requested version $PHP_VERSION."
+else
+	log "PHP provisioning is disabled (PHP_ENABLE=false)."
 fi
 
 web_server_choice="$(printf '%s' "$WEB_SERVER" | tr '[:upper:]' '[:lower:]')"
