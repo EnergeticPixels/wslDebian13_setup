@@ -35,6 +35,35 @@ The installer:
 
 You can also set NEOVIM_VERSION in .env (default: 0.12.0) and run the regular flow with begin_here.sh.
 
+### Provision Java runtime and server
+Java provisioning is modular and optional. The main flow calls `scripts/java_install.sh`, which routes to dedicated installers:
+- `scripts/tomcat_install.sh` when `JAVA_SERVER_MODE=tomcat`
+- `scripts/java_service_install.sh` when `JAVA_SERVER_MODE=jar`
+
+Set these in `.env`:
+- `JAVA_ENABLE=true` to enable Java provisioning (default is false)
+- `JAVA_VERSION=8` for legacy compatibility
+- `JAVA_SERVER_MODE=tomcat` or `JAVA_SERVER_MODE=jar`
+- `JAVA_DISTRO=temurin` (recommended on Debian 13)
+
+If using `JAVA_SERVER_MODE=jar`, also set:
+- `JAVA_APP_JAR_PATH=/absolute/path/to/app.jar`
+- `JAVA_APP_PORT=8081`
+- `JAVA_APP_ARGS=` (optional arguments)
+
+Run Java setup only:
+
+```bash
+sudo bash scripts/java_install.sh
+```
+
+Tomcat notes:
+- The script prefers `tomcat9` from apt when available.
+- If `tomcat9` is unavailable, it installs Apache Tomcat 9 manually under `/opt/tomcat`.
+
+WSL notes:
+- If systemd is not enabled in WSL, services may need to be started manually each session.
+
 ### Developed with
 
 

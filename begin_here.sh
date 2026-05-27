@@ -134,6 +134,9 @@ main() {
 	log "Starting web server setup"
 	run_core_script "$SCRIPTS_DIR/web_server_install.sh"
 	log "Completed web server setup"
+	log "Starting Java server setup"
+	run_core_script "$SCRIPTS_DIR/java_install.sh"
+	log "Completed Java server setup"
 
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"
