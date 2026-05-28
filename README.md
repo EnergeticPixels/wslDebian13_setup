@@ -129,6 +129,7 @@ Configure PHP extension planning with:
 - `PHP_EXTENSIONS_EXTRA=` for comma-separated extension names (example: `soap,pgsql`)
 - `PHP_EXTENSIONS_STRICT=true` to fail if any requested extension package is unavailable
 - `PHP_EXTENSIONS_STRICT=false` to skip unavailable extension packages with warnings
+- `PHP_DB_DRIVER_MODE=auto` to control database driver extension selection (`auto`, `mysql`, `postgres`, `none`)
 
 Behavior details:
 - Apache and Nginx both use `php-fpm` integration
@@ -137,4 +138,147 @@ Behavior details:
 - Lowercase keys (`php_enable`, `php_version`, `php_extensions_baseline`, `php_extensions_extra`, `php_extensions_strict`) are accepted for compatibility
 
 Current baseline profile:
-- `common` maps to: `mbstring`, `xml`, `curl`, `zip`, `intl`, `gd`, `bcmath`, `mysql`, `opcache`, `readline`
+- `common` maps to: `mbstring`, `xml`, `curl`, `zip`, `intl`, `gd`, `bcmath`, `opcache`, `readline`
+
+Database driver extension behavior:
+- With `PHP_DB_DRIVER_MODE=auto` (default), PHP driver extensions follow `DATABASE_TYPE`
+- `DATABASE_TYPE=mysql` adds the `mysql` extension package
+- `DATABASE_TYPE=postgres` adds the `pgsql` extension package
+- `DATABASE_TYPE=none` adds no database driver extension
+- You can override automatic behavior with `PHP_DB_DRIVER_MODE=mysql|postgres|none`
+
+### Database Configuration
+
+Database provisioning is optional and mutually exclusive. Choose between MariaDB, PostgreSQL, or no database installation.
+
+Set `DATABASE_TYPE` in `.env` to control database provisioning:
+- `DATABASE_TYPE=none` (default) — no database installation
+- `DATABASE_TYPE=mysql` — installs MariaDB (MySQL-compatible drop-in replacement)
+- `DATABASE_TYPE=postgres` — PostgreSQL provisioning (planned for future release)
+
+#### MariaDB (MySQL) Provisioning
+
+MariaDB is the recommended MySQL-compatible database for Debian. It is installed from official Debian repositories with full compatibility for MySQL clients and tools.
+
+**Configuration variables:**
+- `MARIADB_VERSION=10.5` — database server version (supported: 10.5–10.11, 11.0–11.6; default: 10.5)
+- `DB_DEV_SETUP=false` — enable automatic development database and user creation
+
+**Optional development setup** (only active if `DB_DEV_SETUP=true`):
+- `DB_DEV_DB_NAME=dev_db` — development database name
+- `DB_DEV_USER=dev_user` — development database user
+- `DB_DEV_PASSWORD=dev_password` — development user password (**WARNING: plaintext in .env, dev-only**)
+- `DB_DEV_USER_HOST=localhost` — host(s) the development user can connect from
+
+**Example .env configuration to enable MariaDB with dev setup:**
+```bash
+DATABASE_TYPE=mysql
+MARIADB_VERSION=10.5
+DB_DEV_SETUP=true
+DB_DEV_DB_NAME=my_app_db
+DB_DEV_USER=app_user
+DB_DEV_PASSWORD=app_password
+DB_DEV_USER_HOST=localhost
+```
+
+**Connection examples:**
+
+Connect as root user:
+```bash
+mariadb -u root
+```
+
+Connect as development user (after dev setup is enabled):
+```bash
+mariadb -u app_user -p -h localhost my_app_db
+# When prompted for password, enter: app_password
+```
+
+Verify MariaDB installation:
+```bash
+mariadb -u root -e "SELECT VERSION();"
+```
+
+Check MariaDB service status:
+```bash
+systemctl status mariadb
+```
+
+Run database setup only (without full provisioning):
+```bash
+sudo bash scripts/database_install.sh
+```
+
+Behavior details:
+- MariaDB service is enabled to start automatically on system boot
+- If MariaDB is already installed, the installer skips reinstallation and logs the current version
+- Development database and user are created only if `DB_DEV_SETUP=true`
+- Lowercase keys (`database_type`, `mariadb_version`, `db_dev_setup`, etc.) are accepted for compatibility
+- On WSL systems with systemd enabled, MariaDB service will start automatically
+- If systemd is not available, start MariaDB manually: `sudo systemctl start mariadb` or `sudo service mariadb start`
+
+#### PostgreSQL Provisioning
+
+PostgreSQL provisioning is implemented. Set `DATABASE_TYPE=postgres` to install and configure PostgreSQL.
+
+PostgreSQL provisioning uses the same shared development setup variables as MariaDB:
+- `DB_DEV_SETUP=false` — enable automatic development database and user creation
+- `DB_DEV_DB_NAME=dev_db` — development database name
+- `DB_DEV_USER=dev_user` — development database user
+- `DB_DEV_PASSWORD=dev_password` — development user password (**WARNING: plaintext in .env, dev-only**)
+- `DB_DEV_USER_HOST=localhost` — host used for local development connections
+
+PostgreSQL version variable:
+- `POSTGRESQL_VERSION=17` — supported versions: `14`, `15`, `16`, `17`
+
+Example `.env` values for PostgreSQL setup:
+```bash
+DATABASE_TYPE=postgres
+POSTGRESQL_VERSION=17
+DB_DEV_SETUP=true
+DB_DEV_DB_NAME=my_app_db
+DB_DEV_USER=app_user
+DB_DEV_PASSWORD=app_password
+DB_DEV_USER_HOST=localhost
+```
+
+Run PostgreSQL setup only (without full provisioning):
+```bash
+sudo bash scripts/postgresql_install.sh
+```
+
+Connection examples:
+
+Connect as postgres superuser:
+```bash
+sudo -u postgres psql
+```
+
+Connect as development user:
+```bash
+psql "host=localhost dbname=my_app_db user=app_user password=app_password"
+```
+
+Verify PostgreSQL installation:
+```bash
+psql --version
+sudo -u postgres psql -c "SELECT version();"
+```
+
+Check PostgreSQL service status:
+```bash
+systemctl status postgresql
+```
+
+Behavior details:
+- Installs `postgresql-<version>` and `postgresql-client-<version>` when available in apt sources
+- Falls back to default `postgresql` and `postgresql-client` packages if the requested versioned package is unavailable
+- Enables and starts PostgreSQL service (`systemctl` when available, otherwise `service` fallback)
+- Development database and user are created only if `DB_DEV_SETUP=true`
+
+#### Security Notes
+
+- Development database credentials are stored in plaintext in `.env` — this is acceptable for **development and WSL environments only**
+- Never commit `.env` (with real credentials) to version control; `.env` is gitignored by default
+- For production environments, use strong passwords, secure credential management, and restrict database user privileges appropriately
+- WSL is a local development environment; network-level database security is not a concern for WSL-local connections

@@ -36,12 +36,20 @@ load_web_stack_env() {
 	if [[ -z "${PHP_EXTENSIONS_STRICT:-}" && -n "${php_extensions_strict:-}" ]]; then
 		PHP_EXTENSIONS_STRICT="$php_extensions_strict"
 	fi
+	if [[ -z "${DATABASE_TYPE:-}" && -n "${database_type:-}" ]]; then
+		DATABASE_TYPE="$database_type"
+	fi
+	if [[ -z "${PHP_DB_DRIVER_MODE:-}" && -n "${php_db_driver_mode:-}" ]]; then
+		PHP_DB_DRIVER_MODE="$php_db_driver_mode"
+	fi
 
 	PHP_ENABLE="${PHP_ENABLE:-false}"
 	PHP_VERSION="${PHP_VERSION:-7.4}"
 	PHP_EXTENSIONS_BASELINE="${PHP_EXTENSIONS_BASELINE:-common}"
 	PHP_EXTENSIONS_EXTRA="${PHP_EXTENSIONS_EXTRA:-}"
 	PHP_EXTENSIONS_STRICT="${PHP_EXTENSIONS_STRICT:-true}"
+	DATABASE_TYPE="${DATABASE_TYPE:-none}"
+	PHP_DB_DRIVER_MODE="${PHP_DB_DRIVER_MODE:-auto}"
 
 	case "$(printf '%s' "$PHP_ENABLE" | tr '[:upper:]' '[:lower:]')" in
 		1|true|yes|y|on)
@@ -69,12 +77,26 @@ load_web_stack_env() {
 			;;
 	esac
 
+	DATABASE_TYPE="$(printf '%s' "$DATABASE_TYPE" | tr '[:upper:]' '[:lower:]')"
+	PHP_DB_DRIVER_MODE="$(printf '%s' "$PHP_DB_DRIVER_MODE" | tr '[:upper:]' '[:lower:]')"
+
+	case "$PHP_DB_DRIVER_MODE" in
+		auto|none|mysql|postgres)
+			;;
+		*)
+			echo "Invalid PHP_DB_DRIVER_MODE '$PHP_DB_DRIVER_MODE'. Supported values: auto, none, mysql, postgres" >&2
+			exit 1
+			;;
+	esac
+
 	export WEB_SERVER
 	export PHP_ENABLE
 	export PHP_VERSION
 	export PHP_EXTENSIONS_BASELINE
 	export PHP_EXTENSIONS_EXTRA
 	export PHP_EXTENSIONS_STRICT
+	export DATABASE_TYPE
+	export PHP_DB_DRIVER_MODE
 }
 
 validate_php_version() {
@@ -114,10 +136,46 @@ validate_php_extension_name() {
 get_php_baseline_extensions() {
 	case "$PHP_EXTENSIONS_BASELINE" in
 		common)
-			echo "mbstring xml curl zip intl gd bcmath mysql opcache readline"
+			echo "mbstring xml curl zip intl gd bcmath opcache readline"
 			;;
 		none)
 			echo ""
+			;;
+	esac
+}
+
+get_php_database_driver_extensions() {
+	local effective_mode
+	effective_mode="$(get_effective_php_db_driver_mode)"
+
+	case "$effective_mode" in
+		mysql)
+			echo "mysql"
+			;;
+		postgres)
+			echo "pgsql"
+			;;
+		none)
+			echo ""
+			;;
+	esac
+}
+
+get_effective_php_db_driver_mode() {
+	if [[ "$PHP_DB_DRIVER_MODE" != "auto" ]]; then
+		printf '%s' "$PHP_DB_DRIVER_MODE"
+		return 0
+	fi
+
+	case "$DATABASE_TYPE" in
+		mysql)
+			echo "mysql"
+			;;
+		postgres)
+			echo "postgres"
+			;;
+		*)
+			echo "none"
 			;;
 	esac
 }
@@ -132,7 +190,7 @@ trim_whitespace() {
 }
 
 build_php_extension_package_list() {
-	local baseline_names baseline_name extra_name candidate extension_package
+	local baseline_names db_driver_names baseline_name db_driver_name extra_name candidate extension_package
 	local -a baseline_array extra_array combined
 	declare -A seen=()
 
@@ -140,10 +198,17 @@ build_php_extension_package_list() {
 
 	baseline_names="$(get_php_baseline_extensions)"
 	read -r -a baseline_array <<< "$baseline_names"
+	db_driver_names="$(get_php_database_driver_extensions)"
 
 	for baseline_name in "${baseline_array[@]}"; do
 		if [[ -n "$baseline_name" ]]; then
 			combined+=("$baseline_name")
+		fi
+	done
+
+	for db_driver_name in $db_driver_names; do
+		if [[ -n "$db_driver_name" ]]; then
+			combined+=("$db_driver_name")
 		fi
 	done
 
@@ -203,6 +268,9 @@ filter_php_extension_packages_by_availability() {
 }
 
 resolve_php_extension_packages() {
+	local effective_mode
+	effective_mode="$(get_effective_php_db_driver_mode)"
+	log "PHP DB driver selection: mode=$PHP_DB_DRIVER_MODE, database_type=$DATABASE_TYPE, effective_driver=$effective_mode"
 	build_php_extension_package_list
 	filter_php_extension_packages_by_availability
 }
