@@ -81,7 +81,7 @@ run_core_script() {
 		return 0
 	fi
 
-	chmod +x "$script_path"
+	# chmod +x "$script_path"
 	log "Running $script_name"
 
 	# User-level configuration scripts should run as the invoking sudo user
@@ -107,7 +107,7 @@ run_modules() {
 	shopt -s nullglob
 	local module_script
 	for module_script in "$MODULES_DIR"/*.sh; do
-		chmod +x "$module_script"
+		# chmod +x "$module_script"
 		log "Running module $(basename "$module_script")"
 		bash "$module_script"
 	done

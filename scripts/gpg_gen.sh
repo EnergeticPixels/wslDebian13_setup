@@ -18,10 +18,10 @@ require_env_vars GIT_NAME GIT_EMAIL GPG_EXPIRATION
 ensure_gpg_tty_shell_init() {
   local target_user target_home bashrc
 
-  target_user="${SUDO_USER:-}"
   target_home="$HOME"
 
-  if [[ -n "$target_user" ]]; then
+  if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" ]]; then
+    target_user="${SUDO_USER:-}"
     target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
   fi
 
@@ -47,6 +47,10 @@ ensure_gpg_tty_shell_init() {
 }
 
 ensure_gpg_tty_shell_init
+
+# Set GPG_TTY in current session for signing to work in WSL/interactive environments
+export GPG_TTY=$(tty)
+gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1 || true
 
 uid="$GIT_NAME <$GIT_EMAIL>"
 
