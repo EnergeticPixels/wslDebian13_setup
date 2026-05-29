@@ -340,3 +340,38 @@ Behavior details:
 - Never commit `.env` (with real credentials) to version control; `.env` is gitignored by default
 - For production environments, use strong passwords, secure credential management, and restrict database user privileges appropriately
 - WSL is a local development environment; network-level database security is not a concern for WSL-local connections
+
+### Redis Cache Provisioning
+
+Redis provisioning is optional and controlled by a dedicated toggle.
+
+Set these in `.env`:
+- `REDIS_ENABLE=true` to install and start Redis during provisioning (default: `false`)
+- `REDIS_VERSION=7.0` to declare your preferred Redis version target
+
+Notes about `REDIS_VERSION`:
+- The installer validates format (for example: `7.0` or `7.0.15`)
+- Installation uses distro apt repositories, so the final installed version depends on package availability
+- If the installed version differs from your requested `REDIS_VERSION`, the script logs a warning
+
+Run Redis setup only:
+
+```bash
+sudo bash scripts/redis_install.sh
+```
+
+Verify Redis installation:
+
+```bash
+redis-server --version
+redis-cli ping
+```
+
+Check Redis service status:
+
+```bash
+systemctl status redis-server
+```
+
+WSL note:
+- If systemd is not enabled in WSL, start Redis manually each session with `sudo service redis-server start`.
