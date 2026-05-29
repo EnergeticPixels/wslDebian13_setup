@@ -91,6 +91,45 @@ Run Node setup only:
 sudo bash scripts/node_install.sh
 ```
 
+### Provision GitHub CLI (gh)
+GitHub CLI provisioning is optional and can be enabled for the full provisioning flow.
+
+Set these in `.env`:
+- `GH_ENABLE=true` to install GitHub CLI during provisioning (default is false)
+- `GH_AUTH_MODE=none` for install-only behavior (supported values: `none`, `token`, `device`)
+- `GH_HOST=github.com` to choose the GitHub host target for auth status checks
+
+Behavior details:
+- The installer prefers distro apt sources first
+- If `gh` is unavailable in default apt sources, the script adds the official GitHub CLI apt repository and retries installation
+- `GH_AUTH_MODE=none` installs gh and reports auth status only
+- `GH_AUTH_MODE=token` performs non-interactive auth using a runtime token from `GH_TOKEN` or `GITHUB_TOKEN`
+- `GH_AUTH_MODE=device` runs an interactive `gh auth login` flow (requires an interactive terminal)
+- After successful auth (`token` or `device`), the script runs `gh auth setup-git`
+- Lowercase keys (`gh_enable`, `gh_auth_mode`, `gh_host`) are accepted for compatibility
+
+Token auth note:
+- Keep tokens out of `.env`; pass them only in the runtime environment (for example with `sudo -E`)
+
+Run GitHub CLI setup only:
+
+```bash
+sudo bash scripts/gh_install.sh
+```
+
+Authenticate after provisioning (optional):
+
+```bash
+gh auth login -h github.com
+gh auth status -h github.com
+```
+
+Run token auth through the installer (Phase 2):
+
+```bash
+sudo GH_ENABLE=true GH_AUTH_MODE=token GH_TOKEN=<your-token> bash scripts/gh_install.sh
+```
+
 ### Developed with
 
 

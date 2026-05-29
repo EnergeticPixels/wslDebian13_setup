@@ -150,6 +150,9 @@ main() {
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"
 	run_core_script "$SCRIPTS_DIR/git-config.sh"
+	log "Starting GitHub CLI setup"
+	run_core_script "$SCRIPTS_DIR/gh_install.sh"
+	log "Completed GitHub CLI setup"
 
 	run_modules
 
