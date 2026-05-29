@@ -27,6 +27,9 @@ load_database_env() {
 	if [[ -z "${POSTGRESQL_VERSION:-}" && -n "${postgresql_version:-}" ]]; then
 		POSTGRESQL_VERSION="$postgresql_version"
 	fi
+	if [[ -z "${MONGODB_VERSION:-}" && -n "${mongodb_version:-}" ]]; then
+		MONGODB_VERSION="$mongodb_version"
+	fi
 	if [[ -z "${DB_DEV_SETUP:-}" && -n "${db_dev_setup:-}" ]]; then
 		DB_DEV_SETUP="$db_dev_setup"
 	fi
@@ -103,6 +106,7 @@ load_database_env() {
 	DATABASE_TYPE="${DATABASE_TYPE:-none}"
 	MARIADB_VERSION="${MARIADB_VERSION:-10.5}"
 	POSTGRESQL_VERSION="${POSTGRESQL_VERSION:-17}"
+	MONGODB_VERSION="${MONGODB_VERSION:-8.0}"
 	DB_DEV_SETUP="${DB_DEV_SETUP:-false}"
 	DB_DEV_DB_NAME="${DB_DEV_DB_NAME:-dev_db}"
 	DB_DEV_USER="${DB_DEV_USER:-dev_user}"
@@ -141,6 +145,7 @@ load_database_env() {
 	export DATABASE_TYPE
 	export MARIADB_VERSION
 	export POSTGRESQL_VERSION
+	export MONGODB_VERSION
 	export DB_DEV_SETUP
 	export DB_DEV_DB_NAME
 	export DB_DEV_USER
@@ -164,11 +169,11 @@ database_is_enabled() {
 
 validate_database_type() {
 	case "$DATABASE_TYPE" in
-		mysql|postgres|none)
+		mysql|postgres|mongodb|none)
 			return 0
 			;;
 		*)
-			echo "Invalid DATABASE_TYPE '$DATABASE_TYPE'. Supported values: mysql, postgres, none" >&2
+			echo "Invalid DATABASE_TYPE '$DATABASE_TYPE'. Supported values: mysql, postgres, mongodb, none" >&2
 			exit 1
 			;;
 	esac
@@ -193,6 +198,18 @@ validate_postgresql_version() {
 			;;
 		*)
 			echo "Invalid POSTGRESQL_VERSION '$POSTGRESQL_VERSION'. Supported versions: 14, 15, 16, 17" >&2
+			exit 1
+			;;
+	esac
+}
+
+validate_mongodb_version() {
+	case "$MONGODB_VERSION" in
+		6.0|7.0|8.0)
+			return 0
+			;;
+		*)
+			echo "Invalid MONGODB_VERSION '$MONGODB_VERSION'. Supported versions: 6.0, 7.0, 8.0" >&2
 			exit 1
 			;;
 	esac

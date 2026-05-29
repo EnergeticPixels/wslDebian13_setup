@@ -144,17 +144,19 @@ Database driver extension behavior:
 - With `PHP_DB_DRIVER_MODE=auto` (default), PHP driver extensions follow `DATABASE_TYPE`
 - `DATABASE_TYPE=mysql` adds the `mysql` extension package
 - `DATABASE_TYPE=postgres` adds the `pgsql` extension package
+- `DATABASE_TYPE=mongodb` adds no SQL database driver extension
 - `DATABASE_TYPE=none` adds no database driver extension
 - You can override automatic behavior with `PHP_DB_DRIVER_MODE=mysql|postgres|none`
 
 ### Database Configuration
 
-Database provisioning is optional and mutually exclusive. Choose between MariaDB, PostgreSQL, or no database installation.
+Database provisioning is optional and mutually exclusive. Choose between MariaDB, PostgreSQL, MongoDB, or no database installation.
 
 Set `DATABASE_TYPE` in `.env` to control database provisioning:
 - `DATABASE_TYPE=none` (default) — no database installation
 - `DATABASE_TYPE=mysql` — installs MariaDB (MySQL-compatible drop-in replacement)
-- `DATABASE_TYPE=postgres` — PostgreSQL provisioning (planned for future release)
+- `DATABASE_TYPE=postgres` — installs and configures PostgreSQL
+- `DATABASE_TYPE=mongodb` — installs and configures MongoDB Community Edition
 
 #### MariaDB (MySQL) Provisioning
 
@@ -274,6 +276,62 @@ Behavior details:
 - Installs `postgresql-<version>` and `postgresql-client-<version>` when available in apt sources
 - Falls back to default `postgresql` and `postgresql-client` packages if the requested versioned package is unavailable
 - Enables and starts PostgreSQL service (`systemctl` when available, otherwise `service` fallback)
+- Development database and user are created only if `DB_DEV_SETUP=true`
+
+#### MongoDB Provisioning
+
+MongoDB provisioning is implemented. Set `DATABASE_TYPE=mongodb` to install and configure MongoDB Community Edition.
+
+MongoDB provisioning uses the same shared development setup variables:
+- `DB_DEV_SETUP=false` — enable automatic development database and user creation
+- `DB_DEV_DB_NAME=dev_db` — development database name
+- `DB_DEV_USER=dev_user` — development database user
+- `DB_DEV_PASSWORD=dev_password` — development database user password (**WARNING: plaintext in .env, dev-only**)
+
+MongoDB version variable:
+- `MONGODB_VERSION=8.0` — supported versions: `6.0`, `7.0`, `8.0`
+
+Example `.env` values for MongoDB setup:
+```bash
+DATABASE_TYPE=mongodb
+MONGODB_VERSION=8.0
+DB_DEV_SETUP=true
+DB_DEV_DB_NAME=my_app_db
+DB_DEV_USER=app_user
+DB_DEV_PASSWORD=app_password
+```
+
+Run MongoDB setup only (without full provisioning):
+```bash
+sudo bash scripts/mongodb_install.sh
+```
+
+Connection examples:
+
+Connect to local MongoDB shell:
+```bash
+mongosh
+```
+
+Connect as development user:
+```bash
+mongosh "mongodb://app_user:app_password@localhost:27017/my_app_db?authSource=my_app_db"
+```
+
+Verify MongoDB installation:
+```bash
+mongosh --version
+```
+
+Check MongoDB service status:
+```bash
+systemctl status mongod
+```
+
+Behavior details:
+- Installs MongoDB Community Edition from the official MongoDB apt repository
+- On Debian trixie and unknown codenames, the installer falls back to MongoDB's `bookworm` repository track
+- Enables and starts MongoDB service (`systemctl` when available, otherwise `service` fallback)
 - Development database and user are created only if `DB_DEV_SETUP=true`
 
 #### Security Notes

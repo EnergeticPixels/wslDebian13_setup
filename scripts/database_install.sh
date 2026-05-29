@@ -13,6 +13,7 @@ fi
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MARIADB_SCRIPT="$SCRIPT_DIR/mariadb_install.sh"
 POSTGRESQL_SCRIPT="$SCRIPT_DIR/postgresql_install.sh"
+MONGODB_SCRIPT="$SCRIPT_DIR/mongodb_install.sh"
 DATABASE_LIB="$SCRIPT_DIR/lib/database.sh"
 
 if [[ ! -f "$DATABASE_LIB" ]]; then
@@ -52,6 +53,16 @@ case "$database_choice" in
 		validate_postgresql_version
 		log "Running PostgreSQL installer script (version $POSTGRESQL_VERSION)."
 		bash "$POSTGRESQL_SCRIPT"
+		;;
+	mongodb)
+		if [[ ! -f "$MONGODB_SCRIPT" ]]; then
+			echo "Missing installer script: $MONGODB_SCRIPT" >&2
+			exit 1
+		fi
+
+		validate_mongodb_version
+		log "Running MongoDB installer script (version $MONGODB_VERSION)."
+		bash "$MONGODB_SCRIPT"
 		;;
 	*)
 		echo "Unexpected DATABASE_TYPE '$database_choice'" >&2
