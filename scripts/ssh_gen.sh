@@ -25,6 +25,30 @@ fi
 ssh_dir="$target_home/.ssh"
 github_key_path="$ssh_dir/id_github"
 
+ensure_ssh_agent_shell_init() {
+  local bashrc
+  bashrc="$target_home/.bashrc"
+
+  touch "$bashrc"
+
+  if ! grep -Fq 'eval "$(ssh-agent -s)" >/dev/null' "$bashrc"; then
+    {
+      echo ''
+      echo '# Start ssh-agent automatically for interactive shells.'
+      echo 'if [[ $- == *i* && -z "${SSH_AUTH_SOCK:-}" ]]; then'
+      echo '  eval "$(ssh-agent -s)" >/dev/null'
+      echo 'fi'
+    } >> "$bashrc"
+    echo "Added ssh-agent startup to $bashrc"
+  fi
+
+  if [[ "$(id -u)" -eq 0 && -n "$target_user" ]]; then
+    chown "$target_user:$target_user" "$bashrc" 2>/dev/null || true
+  fi
+}
+
+ensure_ssh_agent_shell_init
+
 echo "Generating SSH keys for multiple providers"
 mkdir -p "$ssh_dir"
 # If running as root, set ownership before changing permissions
