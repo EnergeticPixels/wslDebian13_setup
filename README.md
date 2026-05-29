@@ -130,6 +130,33 @@ Run token auth through the installer (Phase 2):
 sudo GH_ENABLE=true GH_AUTH_MODE=token GH_TOKEN=<your-token> bash scripts/gh_install.sh
 ```
 
+### Provision standalone GitHub Copilot CLI (preferred)
+This project provisions the standalone `copilot` CLI as the preferred Copilot terminal experience.
+The old `github/gh-copilot` extension path is deprecated and not used by this provisioning flow.
+
+Set these in `.env`:
+- `COPILOT_ENABLE=true` to install standalone GitHub Copilot CLI (default is false)
+- `COPILOT_VERSION=latest` to install the latest available release
+
+Behavior details:
+- Uses the official GitHub installer endpoint: `https://gh.io/copilot-install`
+- Runs in root mode during provisioning, so the binary installs to `/usr/local/bin`
+- Accepts lowercase compatibility keys (`copilot_enable`, `copilot_version`)
+- Authentication is user-driven after install (`copilot` then `/login`), or by runtime token environment variables
+
+Run standalone Copilot CLI setup only:
+
+```bash
+sudo bash scripts/copilot_cli_install.sh
+```
+
+Verify installation:
+
+```bash
+copilot --version
+copilot
+```
+
 ### Developed with
 
 

@@ -153,6 +153,9 @@ main() {
 	log "Starting GitHub CLI setup"
 	run_core_script "$SCRIPTS_DIR/gh_install.sh"
 	log "Completed GitHub CLI setup"
+	log "Starting GitHub Copilot CLI setup"
+	run_core_script "$SCRIPTS_DIR/copilot_cli_install.sh"
+	log "Completed GitHub Copilot CLI setup"
 
 	run_modules
 
