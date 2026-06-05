@@ -25,6 +25,26 @@ WSL/GPG note:
 - `scripts/gpg_gen.sh` now adds that line to the invoking user's `~/.bashrc` so it persists in new terminals.
 - If GPG pinentry still complains in the current terminal, run `gpg-connect-agent updatestartuptty /bye` once after exporting `GPG_TTY`.
 
+### Provision Git identity and aliases
+Git identity and signing are configured by `scripts/git-config.sh` during the main provisioning flow.
+
+Set these in `.env`:
+- `GIT_NAME` and `GIT_EMAIL` for Git identity
+
+Default aliases are built into `scripts/git-config.sh`:
+- `br = branch --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(contents:subject) %(color:green)(%(committerdate:relative)) [%(authorname)]' --sort=-committerdate`
+- `lg = !git log --pretty=format:"%C(magenta)%h%Creset %C(red)%d%Creset %s %C(dim green)(%cr) [%an]" --abbrev-commit -30`
+
+Optional advanced override (not required):
+- `GIT_ALIAS_BR` to override `br`
+- `GIT_ALIAS_LG` to override `lg`
+
+Run Git setup only:
+
+```bash
+sudo bash scripts/git-config.sh
+```
+
 ### Install Neovim 0.12 only
 If you only want Neovim (without running the full provisioning flow):
 

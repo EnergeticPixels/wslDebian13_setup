@@ -94,4 +94,13 @@ git config --file "$gitconfig_path" commit.gpgsign true
 
 git config --file "$gitconfig_path" core.filemode false
 
+git_alias_br_default='branch --format="%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(contents:subject) %(color:green)(%(committerdate:relative)) [%(authorname)]" --sort=-committerdate'
+git_alias_lg_default='!git log --pretty=format:"%C(magenta)%h%Creset %C(red)%d%Creset %s %C(dim green)(%cr) [%an]" --abbrev-commit -30'
+
+git_alias_br="${GIT_ALIAS_BR:-$git_alias_br_default}"
+git_alias_lg="${GIT_ALIAS_LG:-$git_alias_lg_default}"
+
+git config --file "$gitconfig_path" alias.br "$git_alias_br"
+git config --file "$gitconfig_path" alias.lg "$git_alias_lg"
+
 echo "Updated git config at $gitconfig_path"
