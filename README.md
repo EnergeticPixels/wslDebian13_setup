@@ -177,6 +177,29 @@ copilot --version
 copilot
 ```
 
+### Provision front-end creative apps
+Front-end creative tooling is optional and can be enabled per app during provisioning.
+
+Set these in `.env`:
+- `INKSCAPE_ENABLE=true` to install Inkscape
+- `GIMP_ENABLE=true` to install GIMP
+- `BLENDER_ENABLE=true` to install Blender
+- `AUDACITY_ENABLE=true` to install Audacity
+- `VIDEO_EDITOR=none|openshot|davinci` to choose a video editor path
+
+Behavior details:
+- Installers are non-interactive and `.env` driven
+- `VIDEO_EDITOR=openshot` installs `openshot-qt` from apt
+- `VIDEO_EDITOR=davinci` attempts DaVinci Resolve installation from available community apt package sources
+- If no DaVinci package source is available, the installer logs a clear skip message and continues
+- Lowercase compatibility keys (`inkscape_enable`, `gimp_enable`, `blender_enable`, `audacity_enable`, `video_editor`) are accepted
+
+Run front-end creative app setup only:
+
+```bash
+sudo bash scripts/frontend_apps_install.sh
+```
+
 ### Developed with
 
 

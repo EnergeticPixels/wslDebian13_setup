@@ -159,6 +159,9 @@ main() {
 	log "Starting GitHub Copilot CLI setup"
 	run_core_script "$SCRIPTS_DIR/copilot_cli_install.sh"
 	log "Completed GitHub Copilot CLI setup"
+	log "Starting front-end creative apps setup"
+	run_core_script "$SCRIPTS_DIR/frontend_apps_install.sh"
+	log "Completed front-end creative apps setup"
 
 	run_modules
 
