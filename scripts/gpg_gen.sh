@@ -82,112 +82,104 @@ gpg_with_passphrase() {
   printf '%s\n' "$GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 "$@"
 }
 
-prompt_for_gpg_passphrase
+# ---------------------------------------------------------------------------
+# Check whether a GPG key for this identity already exists in the keyring.
+# ---------------------------------------------------------------------------
+resolve_gpg_key_info() {
+  local _email="$1"
 
-# Generate a signing-capable Ed25519 primary key using interactive pinentry.
-gpg_with_passphrase --quick-generate-key "$uid" ed25519 sign "$GPG_EXPIRATION"
-
-# Resolve the generated key ID by matching UID email in machine-readable output.
-GPG_KEY_ID="$({
-  gpg --batch --with-colons --list-secret-keys 2>/dev/null || true
-} | awk -F: -v email="$GIT_EMAIL" '
-  $1 == "sec" {
-    current_keyid = $5
-    next
-  }
-  $1 == "uid" && current_keyid != "" {
-    if (index($10, email) > 0) {
-      print current_keyid
-      exit
-    }
-  }
-')"
-
-if [[ -z "$GPG_KEY_ID" ]]; then
-  # Fallback: use first available secret key ID.
   GPG_KEY_ID="$({
     gpg --batch --with-colons --list-secret-keys 2>/dev/null || true
-  } | awk -F: '$1 == "sec" { print $5; exit }')"
-fi
-
-GPG_FPR="$({
-  gpg --batch --with-colons --list-secret-keys 2>/dev/null || true
-} | awk -F: -v email="$GIT_EMAIL" '
-  $1 == "sec" {
-    current_keyid = $5
-    next
-  }
-  $1 == "fpr" && current_keyid != "" {
-    fpr_by_keyid[current_keyid] = $10
-    next
-  }
-  $1 == "uid" && current_keyid != "" {
-    if (index($10, email) > 0) {
-      print fpr_by_keyid[current_keyid]
-      exit
+  } | awk -F: -v email="$_email" '
+    $1 == "sec" { current_keyid = $5; current_expiry = $7; next }
+    $1 == "uid" && current_keyid != "" {
+      if (index($10, email) > 0) { print current_keyid ":" current_expiry; exit }
     }
-  }
-')"
+  ')"
 
-if [[ -z "$GPG_FPR" ]]; then
   GPG_FPR="$({
     gpg --batch --with-colons --list-secret-keys 2>/dev/null || true
-  } | awk -F: '$1 == "fpr" { print $10; exit }')"
-fi
+  } | awk -F: -v email="$_email" '
+    $1 == "sec" { current_keyid = $5; next }
+    $1 == "fpr" && current_keyid != "" { fpr_by_keyid[current_keyid] = $10; next }
+    $1 == "uid" && current_keyid != "" {
+      if (index($10, email) > 0) { print fpr_by_keyid[current_keyid]; exit }
+    }
+  ')"
+}
 
-if [[ -z "$GPG_FPR" ]]; then
-  echo "Unable to locate the generated GPG key fingerprint. Verify .env values and gpg installation." >&2
-  exit 1
-fi
+resolve_gpg_key_info "$GIT_EMAIL"
 
-# Ensure there is an encryption subkey for provider workflows.
-has_encrypt_subkey="$({
-  gpg --batch --with-colons --list-secret-keys "$GPG_FPR" 2>/dev/null || true
-} | awk -F: '$1 == "ssb" && index($12, "e") > 0 { found=1 } END { print found+0 }')"
+do_generate_gpg_key() {
+  prompt_for_gpg_passphrase
 
-if [[ "$has_encrypt_subkey" -eq 0 ]]; then
-  gpg_with_passphrase --quick-add-key "$GPG_FPR" cv25519 encrypt "$GPG_EXPIRATION"
-fi
+  # Generate a signing-capable Ed25519 primary key.
+  gpg_with_passphrase --quick-generate-key "$uid" ed25519 sign "$GPG_EXPIRATION"
 
-unset GPG_PASSPHRASE
+  # Re-resolve key info after generation.
+  resolve_gpg_key_info "$GIT_EMAIL"
 
-# 5. Output Public Keys
-echo "-------------------------------------------------------"
-echo "SETUP COMPLETE locally."
-echo "-------------------------------------------------------"
-echo "GPG PUBLIC KEY (Add to all providers):"
-exported=0
-
-if [[ -n "$GPG_FPR" ]]; then
-  if gpg --armor --export "$GPG_FPR"; then
-    exported=1
+  # Fall back to first available key if email match failed.
+  if [[ -z "$GPG_KEY_ID" ]]; then
+    GPG_KEY_ID="$({
+      gpg --batch --with-colons --list-secret-keys 2>/dev/null || true
+    } | awk -F: '$1 == "sec" { print $5; exit }')"
   fi
-fi
 
-if [[ "$exported" -eq 0 && -n "$GIT_EMAIL" ]]; then
-  if gpg --armor --export "$GIT_EMAIL"; then
-    exported=1
+  if [[ -z "$GPG_FPR" ]]; then
+    GPG_FPR="$({
+      gpg --batch --with-colons --list-secret-keys 2>/dev/null || true
+    } | awk -F: '$1 == "fpr" { print $10; exit }')"
   fi
-fi
 
-if [[ "$exported" -eq 0 && -n "$GPG_KEY_ID" ]]; then
-  if gpg --armor --export "$GPG_KEY_ID"; then
-    exported=1
+  if [[ -z "$GPG_FPR" ]]; then
+    echo "Unable to locate the generated GPG key fingerprint. Verify .env values and gpg installation." >&2
+    exit 1
   fi
-fi
 
-if [[ "$exported" -eq 0 ]]; then
-  echo "Unable to export a GPG public key. Available secret keys:" >&2
-  gpg --list-secret-keys >&2 || true
-  exit 1
-fi
+  # Ensure there is an encryption subkey for provider workflows.
+  local has_encrypt_subkey
+  has_encrypt_subkey="$({
+    gpg --batch --with-colons --list-secret-keys "$GPG_FPR" 2>/dev/null || true
+  } | awk -F: '$1 == "ssb" && index($12, "e") > 0 { found=1 } END { print found+0 }')"
 
-echo ""
-echo "GITHUB SSH PUBLIC KEY (Paste into GitHub Settings):"
-if [[ -f "$HOME/.ssh/id_github.pub" ]]; then
-  cat "$HOME/.ssh/id_github.pub"
+  if [[ "$has_encrypt_subkey" -eq 0 ]]; then
+    gpg_with_passphrase --quick-add-key "$GPG_FPR" cv25519 encrypt "$GPG_EXPIRATION"
+  fi
+
+  unset GPG_PASSPHRASE
+  echo "GPG key generated."
+  # Signal to the orchestrator that keys changed.
+  [[ -n "${KEYS_CHANGED_FLAG:-}" ]] && touch "$KEYS_CHANGED_FLAG" || true
+}
+
+# ---------------------------------------------------------------------------
+# Decide: generate, skip, or regenerate based on expiry.
+# ---------------------------------------------------------------------------
+THIRTY_DAYS=$(( 30 * 86400 ))
+NOW="$(date +%s)"
+
+if [[ -z "$GPG_KEY_ID" ]]; then
+  # No key exists — generate fresh.
+  echo "No GPG key found for $GIT_EMAIL; generating."
+  do_generate_gpg_key
 else
-  echo "No GitHub SSH key found at $HOME/.ssh/id_github.pub"
+  # Key exists — parse the existing expiry.
+  existing_expiry="${GPG_KEY_ID#*:}"
+  GPG_KEY_ID="${GPG_KEY_ID%%:*}"
+
+  if [[ -z "$existing_expiry" || "$existing_expiry" -eq 0 ]]; then
+    echo "GPG key for $GIT_EMAIL has no expiry; skipping regeneration."
+  elif [[ $(( existing_expiry - NOW )) -le $THIRTY_DAYS ]]; then
+    days_left=$(( (existing_expiry - NOW) / 86400 ))
+    echo "GPG key for $GIT_EMAIL expires in ${days_left} day(s); regenerating."
+    # Remove old key to prevent duplicate UID entries.
+    gpg --batch --yes --delete-secret-and-public-key "$GPG_FPR" 2>/dev/null || true
+    GPG_KEY_ID=""
+    GPG_FPR=""
+    do_generate_gpg_key
+  else
+    days_left=$(( (existing_expiry - NOW) / 86400 ))
+    echo "GPG key for $GIT_EMAIL is valid for ${days_left} more day(s); skipping regeneration."
+  fi
 fi
-echo ""
-echo "-------------------------------------------------------"

@@ -98,6 +98,55 @@ run_core_script() {
 	bash "$script_path"
 }
 
+show_public_keys() {
+	local target_user target_home gpg_email ssh_pub
+
+	target_user="${SUDO_USER:-}"
+	target_home="$HOME"
+
+	if [[ -n "$target_user" ]]; then
+		target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+		[[ -z "$target_home" ]] && target_home="$HOME"
+	fi
+
+	# Source .env to get GIT_EMAIL if not already in environment.
+	if [[ -f "$SCRIPT_DIR/.env" ]]; then
+		# shellcheck disable=SC1090
+		source "$SCRIPT_DIR/.env"
+	fi
+
+	gpg_email="${GIT_EMAIL:-}"
+	ssh_pub="$target_home/.ssh/id_github.pub"
+
+	echo ""
+	echo "======================================================="
+	echo "  PROVISIONING COMPLETE — PUBLIC KEYS"
+	echo "  Copy and paste these into GitHub Settings."
+	echo "======================================================="
+
+	echo ""
+	echo "--- GPG PUBLIC KEY (GitHub Settings > SSH and GPG keys > New GPG key) ---"
+	if [[ -n "$gpg_email" ]] && gpg --armor --export "$gpg_email" 2>/dev/null | grep -q 'BEGIN PGP'; then
+		gpg --armor --export "$gpg_email"
+	else
+		echo "(No GPG key found for $gpg_email)"
+	fi
+
+	echo ""
+	echo "--- SSH PUBLIC KEY (GitHub Settings > SSH and GPG keys > New SSH key) ---"
+	if [[ -f "$ssh_pub" ]]; then
+		cat "$ssh_pub"
+	else
+		echo "(No SSH public key found at $ssh_pub)"
+	fi
+
+	echo ""
+	echo "======================================================="
+	read -rp "Press [Enter] once you have added the keys above to GitHub..."
+	echo "======================================================="
+	echo ""
+}
+
 run_modules() {
 	if [[ ! -d "$MODULES_DIR" ]]; then
 		log "No modules directory found at $MODULES_DIR (this is expected until you add plugins)."
@@ -150,6 +199,11 @@ main() {
 	run_core_script "$SCRIPTS_DIR/python_install.sh"
 	log "Completed Python setup"
 
+	# Export a temp file path so child key scripts can signal that keys changed.
+	KEYS_CHANGED_FLAG="$(mktemp)"
+	export KEYS_CHANGED_FLAG
+	rm -f "$KEYS_CHANGED_FLAG"  # start absent; scripts touch it only on generate/regenerate
+
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"
 	run_core_script "$SCRIPTS_DIR/git-config.sh"
@@ -164,6 +218,13 @@ main() {
 	log "Completed front-end creative apps setup"
 
 	run_modules
+
+	if [[ -f "${KEYS_CHANGED_FLAG:-}" ]]; then
+		rm -f "$KEYS_CHANGED_FLAG"
+		show_public_keys
+	else
+		log "SSH and GPG keys unchanged; skipping public key display."
+	fi
 
 	log "Provisioning complete"
 }

@@ -20,6 +20,27 @@ sudo apt dist-upgrade
 sudo bash begin_here.sh
 ```
 
+### SSH and GPG key management
+Keys are managed automatically each time `begin_here.sh` runs:
+
+- **No key found** — a new key is generated.
+- **Key exists and healthy** (more than 30 days before expiry) — skipped; the log records the days remaining.
+- **Key exists and near expiry** (within 30 days) — the old key is replaced. The previous SSH key is backed up as `~/.ssh/id_github.bak` before overwrite.
+
+Key expiry TTLs are set in `.env`:
+- `GPG_EXPIRATION=1y` — GPG key lifetime (uses GPG's own expiry field as the authoritative source)
+- `SSH_KEY_EXPIRATION=1y` — SSH key lifetime (tracked via the key file's modification timestamp + TTL)
+
+**Public key display:** At the end of provisioning, if any key was generated or regenerated during that run, both the GPG and SSH public keys are printed to the terminal and the script pauses so you can copy them into GitHub Settings. If no keys changed, this display is skipped. You can always view existing public keys manually:
+
+```bash
+# GPG public key
+gpg --armor --export "$GIT_EMAIL"
+
+# SSH public key
+cat ~/.ssh/id_github.pub
+```
+
 WSL/GPG note:
 - If signed commits fail with `Inappropriate ioctl for device`, make sure your shell exports `GPG_TTY=$(tty)`.
 - `scripts/gpg_gen.sh` now adds that line to the invoking user's `~/.bashrc` so it persists in new terminals.
