@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$SCRIPT_DIR/scripts"
-MODULES_DIR="$SCRIPT_DIR/modules"
 
 BASE_PACKAGES=(
 	ca-certificates
@@ -147,21 +146,6 @@ show_public_keys() {
 	echo ""
 }
 
-run_modules() {
-	if [[ ! -d "$MODULES_DIR" ]]; then
-		log "No modules directory found at $MODULES_DIR (this is expected until you add plugins)."
-		return 0
-	fi
-
-	shopt -s nullglob
-	local module_script
-	for module_script in "$MODULES_DIR"/*.sh; do
-		# chmod +x "$module_script"
-		log "Running module $(basename "$module_script")"
-		bash "$module_script"
-	done
-	shopt -u nullglob
-}
 
 main() {
 	require_root
@@ -213,11 +197,6 @@ main() {
 	log "Starting GitHub Copilot CLI setup"
 	run_core_script "$SCRIPTS_DIR/copilot_cli_install.sh"
 	log "Completed GitHub Copilot CLI setup"
-	log "Starting front-end creative apps setup"
-	run_core_script "$SCRIPTS_DIR/frontend_apps_install.sh"
-	log "Completed front-end creative apps setup"
-
-	run_modules
 
 	if [[ -f "${KEYS_CHANGED_FLAG:-}" ]]; then
 		rm -f "$KEYS_CHANGED_FLAG"

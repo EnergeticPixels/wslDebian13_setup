@@ -198,27 +198,22 @@ copilot --version
 copilot
 ```
 
-### Provision front-end creative apps
-Front-end creative tooling is optional and can be enabled per app during provisioning.
+### Front-end Creative Apps
+Most front-end creative tools (Inkscape, GIMP, Blender, Audacity, and DaVinci Resolve) have been moved to a separate repository for better maintainability.
 
-Set these in `.env`:
-- `INKSCAPE_ENABLE=true` to install Inkscape
-- `GIMP_ENABLE=true` to install GIMP
-- `BLENDER_ENABLE=true` to install Blender
-- `AUDACITY_ENABLE=true` to install Audacity
-- `VIDEO_EDITOR=none|openshot|davinci` to choose a video editor path
+**For these tools, see:** [debian-fe-tools](https://github.com/EnergeticPixels/debian-fe-tools.git)
 
-Behavior details:
-- Installers are non-interactive and `.env` driven
-- `VIDEO_EDITOR=openshot` installs `openshot-qt` from apt
-- `VIDEO_EDITOR=davinci` attempts DaVinci Resolve installation from available community apt package sources
-- If no DaVinci package source is available, the installer logs a clear skip message and continues
-- Lowercase compatibility keys (`inkscape_enable`, `gimp_enable`, `blender_enable`, `audacity_enable`, `video_editor`) are accepted
+**Video Editor Support:**
+This repository still supports OpenShot video editor as an optional feature:
 
-Run front-end creative app setup only:
+Set in `.env`:
+- `VIDEO_EDITOR=openshot` to install OpenShot video editor
+- `VIDEO_EDITOR=none` (default) to skip video editor installation
+
+Run video editor setup only:
 
 ```bash
-sudo bash scripts/frontend_apps_install.sh
+sudo bash scripts/video_editor_install.sh
 ```
 
 ### Developed with
