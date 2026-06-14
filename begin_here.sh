@@ -15,7 +15,6 @@ BASE_PACKAGES=(
 	build-essential
 	libssl-dev
 	ripgrep
-	vim
 )
 
 log() {
@@ -162,9 +161,9 @@ main() {
 	log "Starting multiplexer setup (tmux)"
 	run_core_script "$SCRIPTS_DIR/tmux_install.sh"
 	log "Completed multiplexer setup (tmux)"
-	log "Starting editor setup (neovim)"
-	run_core_script "$SCRIPTS_DIR/neovim_install.sh"
-	log "Completed editor setup (neovim)"
+	log "Starting editor setup (vim)"
+	run_core_script "$SCRIPTS_DIR/vim_install.sh"
+	log "Completed editor setup (vim)"
 	log "Starting web server setup"
 	run_core_script "$SCRIPTS_DIR/web_server_install.sh"
 	log "Completed web server setup"
@@ -192,12 +191,6 @@ main() {
 	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
 	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"
 	run_core_script "$SCRIPTS_DIR/git-config.sh"
-	log "Starting GitHub CLI setup"
-	run_core_script "$SCRIPTS_DIR/gh_install.sh"
-	log "Completed GitHub CLI setup"
-	log "Starting GitHub Copilot CLI setup"
-	run_core_script "$SCRIPTS_DIR/copilot_cli_install.sh"
-	log "Completed GitHub Copilot CLI setup"
 
 	if [[ -f "${KEYS_CHANGED_FLAG:-}" ]]; then
 		rm -f "$KEYS_CHANGED_FLAG"

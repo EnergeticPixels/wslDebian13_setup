@@ -66,20 +66,19 @@ Run Git setup only:
 sudo bash scripts/git-config.sh
 ```
 
-### Install Neovim 0.12 only
-If you only want Neovim (without running the full provisioning flow):
+### Install Vim (default editor)
+Vim is installed automatically as part of the base package set and set as the system default editor via `scripts/vim_install.sh`.
+
+Run the Vim setup only:
 
 ```bash
-sudo NEOVIM_VERSION=0.12.0 bash scripts/neovim_install.sh
+sudo bash scripts/vim_install.sh
 ```
 
-The installer:
-- Supports amd64 and arm64
-- Downloads Neovim from the official GitHub release assets
-- Verifies the SHA-256 checksum before installation
-- Installs to /opt/nvim and symlinks /usr/local/bin/nvim
-
-You can also set NEOVIM_VERSION in .env (default: 0.12.0) and run the regular flow with begin_here.sh.
+The script:
+- Ensures `vim` is installed via apt
+- Registers vim as the system default using `update-alternatives`
+- Writes `/etc/profile.d/editor.sh` to export `EDITOR=vim` and `VISUAL=vim` for all login shells
 
 ### Provision Java runtime and server
 Java provisioning is modular and optional. The main flow calls `scripts/java_install.sh`, which routes to dedicated installers:
@@ -132,76 +131,10 @@ Run Node setup only:
 sudo bash scripts/node_install.sh
 ```
 
-### Provision GitHub CLI (gh)
-GitHub CLI provisioning is optional and can be enabled for the full provisioning flow.
-
-Set these in `.env`:
-- `GH_ENABLE=true` to install GitHub CLI during provisioning (default is false)
-- `GH_AUTH_MODE=none` for install-only behavior (supported values: `none`, `token`, `device`)
-- `GH_HOST=github.com` to choose the GitHub host target for auth status checks
-
-Behavior details:
-- The installer prefers distro apt sources first
-- If `gh` is unavailable in default apt sources, the script adds the official GitHub CLI apt repository and retries installation
-- `GH_AUTH_MODE=none` installs gh and reports auth status only
-- `GH_AUTH_MODE=token` performs non-interactive auth using a runtime token from `GH_TOKEN` or `GITHUB_TOKEN`
-- `GH_AUTH_MODE=device` runs an interactive `gh auth login` flow (requires an interactive terminal)
-- After successful auth (`token` or `device`), the script runs `gh auth setup-git`
-- Lowercase keys (`gh_enable`, `gh_auth_mode`, `gh_host`) are accepted for compatibility
-
-Token auth note:
-- Keep tokens out of `.env`; pass them only in the runtime environment (for example with `sudo -E`)
-
-Run GitHub CLI setup only:
-
-```bash
-sudo bash scripts/gh_install.sh
-```
-
-Authenticate after provisioning (optional):
-
-```bash
-gh auth login -h github.com
-gh auth status -h github.com
-```
-
-Run token auth through the installer (Phase 2):
-
-```bash
-sudo GH_ENABLE=true GH_AUTH_MODE=token GH_TOKEN=<your-token> bash scripts/gh_install.sh
-```
-
-### Provision standalone GitHub Copilot CLI (preferred)
-This project provisions the standalone `copilot` CLI as the preferred Copilot terminal experience.
-The old `github/gh-copilot` extension path is deprecated and not used by this provisioning flow.
-
-Set these in `.env`:
-- `COPILOT_ENABLE=true` to install standalone GitHub Copilot CLI (default is false)
-- `COPILOT_VERSION=latest` to install the latest available release
-
-Behavior details:
-- Uses the official GitHub installer endpoint: `https://gh.io/copilot-install`
-- Runs in root mode during provisioning, so the binary installs to `/usr/local/bin`
-- Accepts lowercase compatibility keys (`copilot_enable`, `copilot_version`)
-- Authentication is user-driven after install (`copilot` then `/login`), or by runtime token environment variables
-
-Run standalone Copilot CLI setup only:
-
-```bash
-sudo bash scripts/copilot_cli_install.sh
-```
-
-Verify installation:
-
-```bash
-copilot --version
-copilot
-```
-
 ### Front-end Creative Apps
 Most front-end creative tools (Inkscape, GIMP, Blender, Audacity, and DaVinci Resolve) have been moved to a separate repository for better maintainability.
 
-**For these tools, see:** [debian-fe-tools](https://github.com/EnergeticPixels/debian-fe-tools.git)
+**For these tools, see:** [debian-fe-tools](https://github.com/EnergeticPixels/debian_fe-tools.git)
 
 **Video Editor Support:**
 This repository still supports OpenShot video editor as an optional feature:
