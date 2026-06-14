@@ -15,6 +15,7 @@ BASE_PACKAGES=(
 	build-essential
 	libssl-dev
 	ripgrep
+	vim
 )
 
 log() {
