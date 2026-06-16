@@ -131,24 +131,6 @@ Run Node setup only:
 sudo bash scripts/node_install.sh
 ```
 
-### Front-end Creative Apps
-Most front-end creative tools (Inkscape, GIMP, Blender, Audacity, and DaVinci Resolve) have been moved to a separate repository for better maintainability.
-
-**For these tools, see:** [debian-fe-tools](https://github.com/EnergeticPixels/debian_fe-tools.git)
-
-**Video Editor Support:**
-This repository still supports OpenShot video editor as an optional feature:
-
-Set in `.env`:
-- `VIDEO_EDITOR=openshot` to install OpenShot video editor
-- `VIDEO_EDITOR=none` (default) to skip video editor installation
-
-Run video editor setup only:
-
-```bash
-sudo bash scripts/video_editor_install.sh
-```
-
 ### Developed with
 
 
