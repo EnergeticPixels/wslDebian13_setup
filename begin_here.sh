@@ -87,7 +87,7 @@ run_core_script() {
 	# so files are created in that user's home directory instead of /root.
 	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" ]]; then
 		case "$script_name" in
-			ssh_gen.sh|gpg_gen.sh|git-config.sh|node_install.sh|python_install.sh)
+			ssh_gen.sh|gpg_gen.sh|git-config.sh|node_install.sh)
 				sudo -u "$SUDO_USER" -H bash "$script_path"
 				return
 				;;
