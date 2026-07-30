@@ -19,9 +19,6 @@ sudo apt dist-upgrade
 sudo bash begin_here.sh
 ```
 
-<<<<<<< HEAD
-## Documentation Map
-=======
 ### Fresh clone quick start (Debian 13 WSL)
 
 If you cloned the repo directly (recommended), run:
@@ -96,7 +93,6 @@ sudo bash ./provisioning.sh run --only node --dry-run
 
 ### SSH and GPG key management
 Keys are managed automatically each time `begin_here.sh` runs:
->>>>>>> e3991d6 (Add provisioning CLI  with wizard, validation, plan and whiptail fallback)
 
 - [Documentation Home](docs/README.md)
 - [00 - Quickstart](docs/00-QUICKSTART.md)
