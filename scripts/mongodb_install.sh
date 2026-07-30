@@ -39,6 +39,34 @@ service_status() {
 	fi
 }
 
+wait_for_mongodb_ready() {
+	local max_attempts attempt delay
+	max_attempts="${MONGODB_START_MAX_ATTEMPTS:-30}"
+	delay="${MONGODB_START_RETRY_DELAY_SECONDS:-1}"
+
+	log "Waiting for MongoDB to accept connections on 127.0.0.1:27017."
+
+	for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+		if mongosh --quiet --host 127.0.0.1 --port 27017 --eval "db.adminCommand({ ping: 1 }).ok" >/dev/null 2>&1; then
+			log "MongoDB is reachable (attempt $attempt/$max_attempts)."
+			return 0
+		fi
+
+		sleep "$delay"
+	done
+
+	log "MongoDB did not become ready after ${max_attempts} attempts."
+	log "Service diagnostics:"
+	service_status
+
+	if command -v journalctl >/dev/null 2>&1 && command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+		log "Recent mongod logs:"
+		journalctl -u mongod -n 60 --no-pager || true
+	fi
+
+	return 1
+}
+
 mongodb_server_installed() {
 	dpkg-query -W -f='${Status}' mongodb-org 2>/dev/null | grep -q "install ok installed"
 }
@@ -52,11 +80,11 @@ resolve_mongodb_repo_codename() {
 			printf '%s' "$os_codename"
 			;;
 		trixie)
-			log "Debian codename '$os_codename' detected. Using MongoDB bookworm repository compatibility fallback."
+			log "Debian codename '$os_codename' detected. Using MongoDB bookworm repository compatibility fallback." >&2
 			printf '%s' "bookworm"
 			;;
 		*)
-			log "Unknown Debian codename '$os_codename'. Using MongoDB bookworm repository compatibility fallback."
+			log "Unknown Debian codename '$os_codename'. Using MongoDB bookworm repository compatibility fallback." >&2
 			printf '%s' "bookworm"
 			;;
 	esac
@@ -68,6 +96,9 @@ configure_mongodb_apt_repo() {
 	source_list="/etc/apt/sources.list.d/mongodb-org-${MONGODB_VERSION}.list"
 	repo_codename="$(resolve_mongodb_repo_codename)"
 
+	# Clear any stale/invalid MongoDB source file from prior failed runs before refreshing apt indexes.
+	rm -f "$source_list"
+
 	apt-get update
 	apt-get install -y curl gnupg ca-certificates
 
@@ -75,7 +106,6 @@ configure_mongodb_apt_repo() {
 		gpg --dearmor -o "$keyring_path"
 
 	cat > "$source_list" <<EOF
-
 deb [signed-by=$keyring_path] https://repo.mongodb.org/apt/debian ${repo_codename}/mongodb-org/${MONGODB_VERSION} main
 EOF
 }
@@ -104,9 +134,10 @@ const dbName = \"${db_name_json}\";
 const userName = \"${user_json}\";
 const userPassword = \"${password_json}\";
 const appDb = db.getSiblingDB(dbName);
+const provisioningCollection = appDb.getCollection('__provisioning');
 
-appDb.__provisioning.insertOne({createdAt: new Date()});
-appDb.__provisioning.deleteMany({});
+provisioningCollection.insertOne({createdAt: new Date()});
+provisioningCollection.deleteMany({});
 
 const existingUser = appDb.getUser(userName);
 if (existingUser) {
@@ -151,6 +182,7 @@ mongodb_install_main() {
 
 	log "Ensuring MongoDB service is running..."
 	service_start
+	wait_for_mongodb_ready
 
 	if db_dev_setup_is_enabled; then
 		setup_mongodb_dev_environment
