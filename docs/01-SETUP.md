@@ -26,6 +26,7 @@ sudo apt dist-upgrade
 
 If you enable web SSL and choose a `.local` developer URL, add that URL to the host machine HOSTS file.
 Without this step, the URL will not resolve from outside the Debian guest environment.
+The selected `WEB_SSL_BASE_DOMAIN` is used by both Apache and Nginx SSL provisioning.
 
 Recommended mapping targets:
 - `127.0.0.1` (localhost routing)

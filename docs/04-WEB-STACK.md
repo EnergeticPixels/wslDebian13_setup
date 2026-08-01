@@ -20,28 +20,39 @@ Run only web server setup:
 sudo bash scripts/web_server_install.sh
 ```
 
-## Local HTTPS with mkcert (Apache phase)
+## Local HTTPS with mkcert (Apache and Nginx)
 
 Set SSL options in `.env`:
 - `WEB_SSL_ENABLE=true`
 - `WEB_SSL_BASE_DOMAIN=app.local`
 - `WEB_SSL_CERT_EXPIRY=1y`
+- `WEB_SSL_FORCE_HTTPS_REDIRECT=true` (Nginx only)
 
 Current phase scope:
 - Apache SSL execution is implemented
-- Nginx SSL execution is deferred (selection and intent are still captured)
+- Nginx SSL execution is implemented
 
-When enabled for Apache, provisioning:
+When enabled, provisioning:
 - Installs `mkcert` if missing
 - Generates certificate SANs for base domain and wildcard (`app.local` and `*.app.local`)
-- Stores artifacts in `/etc/apache2/ssl/`
-- Enables Apache SSL module and SSL site configuration
+- Stores artifacts in web-server-specific SSL paths
+- Enables web-server-specific SSL site configuration
 
-Certificate and site files:
+Apache certificate and site files:
 - `/etc/apache2/ssl/serverprovo-local.crt`
 - `/etc/apache2/ssl/serverprovo-local.key`
 - `/etc/apache2/ssl/serverprovo-domains.txt`
 - `/etc/apache2/sites-available/serverprovo-ssl.conf`
+
+Nginx certificate and site files:
+- `/etc/nginx/ssl/serverprovo-local.crt`
+- `/etc/nginx/ssl/serverprovo-local.key`
+- `/etc/nginx/ssl/serverprovo-domains.txt`
+- `/etc/nginx/sites-available/serverprovo-ssl.conf`
+
+Nginx redirect behavior when SSL is enabled:
+- `WEB_SSL_FORCE_HTTPS_REDIRECT=true`: HTTP traffic redirects to HTTPS
+- `WEB_SSL_FORCE_HTTPS_REDIRECT=false`: HTTP and HTTPS are both served
 
 ### Host OS HOSTS file requirement
 
@@ -80,11 +91,13 @@ Note:
 
 - Ensure local trust was initialized: `mkcert -install`
 - Check Apache config: `sudo apache2ctl configtest`
+- Check Nginx config: `sudo nginx -t`
 - Confirm SSL module: `sudo apache2ctl -M | grep ssl_module`
 - Check cert expiry and SANs:
 
 ```bash
 sudo openssl x509 -in /etc/apache2/ssl/serverprovo-local.crt -noout -dates -ext subjectAltName
+sudo openssl x509 -in /etc/nginx/ssl/serverprovo-local.crt -noout -dates -ext subjectAltName
 ```
 
 - Validate endpoint:

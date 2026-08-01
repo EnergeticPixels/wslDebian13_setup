@@ -51,6 +51,9 @@ load_web_stack_env() {
 	if [[ -z "${WEB_SSL_CERT_EXPIRY:-}" && -n "${web_ssl_cert_expiry:-}" ]]; then
 		WEB_SSL_CERT_EXPIRY="$web_ssl_cert_expiry"
 	fi
+	if [[ -z "${WEB_SSL_FORCE_HTTPS_REDIRECT:-}" && -n "${web_ssl_force_https_redirect:-}" ]]; then
+		WEB_SSL_FORCE_HTTPS_REDIRECT="$web_ssl_force_https_redirect"
+	fi
 
 	PHP_ENABLE="${PHP_ENABLE:-false}"
 	PHP_VERSION="${PHP_VERSION:-7.4}"
@@ -62,6 +65,7 @@ load_web_stack_env() {
 	WEB_SSL_ENABLE="${WEB_SSL_ENABLE:-false}"
 	WEB_SSL_BASE_DOMAIN="${WEB_SSL_BASE_DOMAIN:-app.local}"
 	WEB_SSL_CERT_EXPIRY="${WEB_SSL_CERT_EXPIRY:-1y}"
+	WEB_SSL_FORCE_HTTPS_REDIRECT="${WEB_SSL_FORCE_HTTPS_REDIRECT:-true}"
 
 	case "$(printf '%s' "$PHP_ENABLE" | tr '[:upper:]' '[:lower:]')" in
 		1|true|yes|y|on)
@@ -102,6 +106,19 @@ load_web_stack_env() {
 			;;
 	esac
 
+	case "$(printf '%s' "$WEB_SSL_FORCE_HTTPS_REDIRECT" | tr '[:upper:]' '[:lower:]')" in
+		1|true|yes|y|on)
+			WEB_SSL_FORCE_HTTPS_REDIRECT=true
+			;;
+		0|false|no|n|off)
+			WEB_SSL_FORCE_HTTPS_REDIRECT=false
+			;;
+		*)
+			echo "Invalid WEB_SSL_FORCE_HTTPS_REDIRECT '$WEB_SSL_FORCE_HTTPS_REDIRECT'. Supported values: true/false" >&2
+			exit 1
+			;;
+	esac
+
 	DATABASE_TYPE="$(printf '%s' "$DATABASE_TYPE" | tr '[:upper:]' '[:lower:]')"
 	PHP_DB_DRIVER_MODE="$(printf '%s' "$PHP_DB_DRIVER_MODE" | tr '[:upper:]' '[:lower:]')"
 	WEB_SSL_BASE_DOMAIN="$(printf '%s' "$WEB_SSL_BASE_DOMAIN" | tr '[:upper:]' '[:lower:]')"
@@ -126,10 +143,15 @@ load_web_stack_env() {
 	export WEB_SSL_ENABLE
 	export WEB_SSL_BASE_DOMAIN
 	export WEB_SSL_CERT_EXPIRY
+	export WEB_SSL_FORCE_HTTPS_REDIRECT
 }
 
 web_ssl_is_enabled() {
 	[[ "$WEB_SSL_ENABLE" == "true" ]]
+}
+
+web_ssl_force_https_redirect_is_enabled() {
+	[[ "$WEB_SSL_FORCE_HTTPS_REDIRECT" == "true" ]]
 }
 
 validate_php_version() {

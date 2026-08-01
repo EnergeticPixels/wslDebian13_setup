@@ -45,6 +45,7 @@ Central reference for frequently used `.env` variables.
 - `WEB_SSL_ENABLE=true|false`
 - `WEB_SSL_BASE_DOMAIN` (base domain only, must end in `.local`, example: `app.local`)
 - `WEB_SSL_CERT_EXPIRY=1y` (fixed to one year in current phase)
+- `WEB_SSL_FORCE_HTTPS_REDIRECT=true|false` (NGINX only; when true, HTTP redirects to HTTPS)
 - `PHP_ENABLE=true|false`
 - `PHP_VERSION=7.4|8.0|8.1|8.2|8.3`
 - `PHP_EXTENSIONS_BASELINE=common|none`
@@ -54,8 +55,9 @@ Central reference for frequently used `.env` variables.
 
 SSL behavior in current phase:
 - Apache: SSL execution active when `WEB_SSL_ENABLE=true`
-- Nginx: SSL intent is captured, but execution is deferred
+- Nginx: SSL execution active when `WEB_SSL_ENABLE=true`
 - Certificate SANs are generated for base domain and wildcard (`app.local` + `*.app.local`)
+- For Nginx, `WEB_SSL_FORCE_HTTPS_REDIRECT=true` enables automatic HTTP to HTTPS redirects
 
 Baseline map:
 - `common`: `mbstring`, `xml`, `curl`, `zip`, `intl`, `gd`, `bcmath`, `opcache`, `readline`

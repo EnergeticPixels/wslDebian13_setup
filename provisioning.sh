@@ -417,7 +417,7 @@ wizard() {
 	local java_jar_default java_port_default java_args_default node_enable_default
 	local node_default_version_default node_versions_default node_nvm_version_default node_global_packages_default
 	local python_enable_default python_ds_default python_dev_mode_default
-	local ssl_enable_default ssl_base_domain_default ssl_cert_expiry_default
+	local ssl_enable_default ssl_base_domain_default ssl_cert_expiry_default ssl_redirect_default ssl_enable_choice
 
 	ensure_interactive_terminal
 	detect_wizard_ui_mode
@@ -439,6 +439,7 @@ wizard() {
 	ssl_enable_default="${WEB_SSL_ENABLE:-false}"
 	ssl_base_domain_default="${WEB_SSL_BASE_DOMAIN:-app.local}"
 	ssl_cert_expiry_default="${WEB_SSL_CERT_EXPIRY:-1y}"
+	ssl_redirect_default="${WEB_SSL_FORCE_HTTPS_REDIRECT:-true}"
 	php_enable_default="${PHP_ENABLE:-false}"
 	php_version_default="${PHP_VERSION:-7.4}"
 	php_baseline_default="${PHP_EXTENSIONS_BASELINE:-common}"
@@ -502,12 +503,16 @@ wizard() {
 		set_env_key "WEB_SSL_ENABLE" "false"
 		unset_env_key "WEB_SSL_BASE_DOMAIN"
 		set_env_key "WEB_SSL_CERT_EXPIRY" "$ssl_cert_expiry_default"
+		set_env_key "WEB_SSL_FORCE_HTTPS_REDIRECT" "$ssl_redirect_default"
 	else
 		set_env_key "WEB_SERVER" "$value"
 		value="$(read_bool 'WEB_SSL_ENABLE (true/false)' "$ssl_enable_default")"
 		set_env_key "WEB_SSL_ENABLE" "$value"
+		ssl_enable_choice="$value"
 		set_env_key "WEB_SSL_CERT_EXPIRY" "$ssl_cert_expiry_default"
-		if [[ "$value" == "true" ]]; then
+		value="$(read_bool 'WEB_SSL_FORCE_HTTPS_REDIRECT (true/false)' "$ssl_redirect_default")"
+		set_env_key "WEB_SSL_FORCE_HTTPS_REDIRECT" "$value"
+		if [[ "$ssl_enable_choice" == "true" ]]; then
 			while true; do
 				value="$(read_with_default 'WEB_SSL_BASE_DOMAIN (must end in .local, example: app.local)' "$ssl_base_domain_default")"
 				if is_valid_local_base_domain "$value"; then
@@ -692,17 +697,23 @@ validate_core_identity_env() {
 }
 
 validate_web_ssl_env() {
-	local web_server web_ssl_enable web_ssl_base_domain web_ssl_cert_expiry normalized_ssl
+	local web_server web_ssl_enable web_ssl_base_domain web_ssl_cert_expiry web_ssl_force_https_redirect normalized_ssl normalized_redirect
 
 	web_server="${WEB_SERVER:-}"
 	web_ssl_enable="${WEB_SSL_ENABLE:-false}"
 	web_ssl_base_domain="${WEB_SSL_BASE_DOMAIN:-}"
 	web_ssl_cert_expiry="${WEB_SSL_CERT_EXPIRY:-1y}"
+	web_ssl_force_https_redirect="${WEB_SSL_FORCE_HTTPS_REDIRECT:-true}"
 
 	if ! normalized_ssl="$(normalize_bool_local "$web_ssl_enable")"; then
 		fail "Invalid WEB_SSL_ENABLE '$web_ssl_enable'. Supported values: true/false"
 	fi
 	WEB_SSL_ENABLE="$normalized_ssl"
+
+	if ! normalized_redirect="$(normalize_bool_local "$web_ssl_force_https_redirect")"; then
+		fail "Invalid WEB_SSL_FORCE_HTTPS_REDIRECT '$web_ssl_force_https_redirect'. Supported values: true/false"
+	fi
+	WEB_SSL_FORCE_HTTPS_REDIRECT="$normalized_redirect"
 
 	if [[ "$WEB_SSL_ENABLE" == "true" ]]; then
 		if [[ -z "$web_server" ]]; then
@@ -779,7 +790,7 @@ validate_command() {
 }
 
 plan_command() {
-	local web_summary web_ssl_enable web_ssl_base_domain
+	local web_summary web_ssl_enable web_ssl_base_domain web_ssl_redirect
 
 	require_env_file
 	validate_with_libs
@@ -787,15 +798,12 @@ plan_command() {
 
 	web_ssl_enable="${WEB_SSL_ENABLE:-false}"
 	web_ssl_base_domain="${WEB_SSL_BASE_DOMAIN:-unset}"
+	web_ssl_redirect="${WEB_SSL_FORCE_HTTPS_REDIRECT:-true}"
 
 	if [[ -n "${WEB_SERVER:-}" ]]; then
 		web_summary="will run (WEB_SERVER=${WEB_SERVER}"
 		if [[ "$web_ssl_enable" == "true" ]]; then
-			if [[ "$WEB_SERVER" == "apache" ]]; then
-				web_summary+="; SSL=true; base_domain=${web_ssl_base_domain}; ssl_execution=active)"
-			else
-				web_summary+="; SSL=true; base_domain=${web_ssl_base_domain}; ssl_execution=deferred)"
-			fi
+			web_summary+="; SSL=true; base_domain=${web_ssl_base_domain}; force_https_redirect=${web_ssl_redirect}; ssl_execution=active)"
 		else
 			web_summary+="; SSL=false)"
 		fi

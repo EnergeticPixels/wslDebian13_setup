@@ -36,10 +36,6 @@ else
 	log "PHP provisioning is disabled (PHP_ENABLE=false)."
 fi
 
-if web_ssl_is_enabled && [[ "$(printf '%s' "$WEB_SERVER" | tr '[:upper:]' '[:lower:]')" == "nginx" ]]; then
-	log "WEB_SSL_ENABLE=true with WEB_SERVER=nginx detected. SSL execution is deferred for NGINX in this phase."
-fi
-
 web_server_choice="$(printf '%s' "$WEB_SERVER" | tr '[:upper:]' '[:lower:]')"
 
 case "$web_server_choice" in

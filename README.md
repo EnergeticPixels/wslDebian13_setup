@@ -98,6 +98,8 @@ Example HOSTS entries:
 
 Use one mapping that matches your networking setup. Do not keep conflicting entries for the same host name.
 
+For Nginx SSL setups, you can control HTTP redirect behavior with `WEB_SSL_FORCE_HTTPS_REDIRECT=true|false`.
+
 ### Windows browser trust for mkcert certificates
 
 If Edge or Chrome on Windows shows Not Secure for your local HTTPS URL, import the mkcert root CA into Windows Trusted Root Certification Authorities.
