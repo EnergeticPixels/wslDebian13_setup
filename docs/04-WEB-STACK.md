@@ -20,6 +20,79 @@ Run only web server setup:
 sudo bash scripts/web_server_install.sh
 ```
 
+## Local HTTPS with mkcert (Apache phase)
+
+Set SSL options in `.env`:
+- `WEB_SSL_ENABLE=true`
+- `WEB_SSL_BASE_DOMAIN=app.local`
+- `WEB_SSL_CERT_EXPIRY=1y`
+
+Current phase scope:
+- Apache SSL execution is implemented
+- Nginx SSL execution is deferred (selection and intent are still captured)
+
+When enabled for Apache, provisioning:
+- Installs `mkcert` if missing
+- Generates certificate SANs for base domain and wildcard (`app.local` and `*.app.local`)
+- Stores artifacts in `/etc/apache2/ssl/`
+- Enables Apache SSL module and SSL site configuration
+
+Certificate and site files:
+- `/etc/apache2/ssl/serverprovo-local.crt`
+- `/etc/apache2/ssl/serverprovo-local.key`
+- `/etc/apache2/ssl/serverprovo-domains.txt`
+- `/etc/apache2/sites-available/serverprovo-ssl.conf`
+
+### Host OS HOSTS file requirement
+
+If the URL should work from the host computer, add `WEB_SSL_BASE_DOMAIN` to the host OS HOSTS file.
+Without this step, name resolution can fail outside Debian.
+
+Map to either:
+- `127.0.0.1` when localhost forwarding is used
+- WSL2 Debian guest IP for direct guest routing
+
+### Windows browser trust (Edge and Chrome)
+
+If Windows browsers still show Not Secure after hosts mapping, trust the mkcert root CA in Windows.
+
+1. In Debian/WSL, print the mkcert CA directory used by provisioning:
+
+```bash
+sudo mkcert -CAROOT
+```
+
+2. Copy rootCA.pem from that directory to Windows.
+
+3. In Windows PowerShell (Run as Administrator), import into Trusted Root:
+
+```powershell
+certutil -addstore -f Root "C:\path\to\rootCA.pem"
+```
+
+4. Fully close and reopen Edge/Chrome.
+
+Note:
+- If provisioning was run with sudo, the CA directory is typically `/root/.local/share/mkcert`.
+- A privately trusted CA is expected for local development `.local` domains.
+
+### Troubleshooting
+
+- Ensure local trust was initialized: `mkcert -install`
+- Check Apache config: `sudo apache2ctl configtest`
+- Confirm SSL module: `sudo apache2ctl -M | grep ssl_module`
+- Check cert expiry and SANs:
+
+```bash
+sudo openssl x509 -in /etc/apache2/ssl/serverprovo-local.crt -noout -dates -ext subjectAltName
+```
+
+- Validate endpoint:
+
+```bash
+curl -k https://app.local
+```
+
 ## PHP provisioning
 
 Enable/disable per run:

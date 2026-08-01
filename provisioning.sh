@@ -150,6 +150,46 @@ parse_expiry_to_seconds_local() {
 	fi
 }
 
+normalize_bool_local() {
+	local value normalized
+	value="$1"
+	normalized="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+
+	case "$normalized" in
+		1|true|yes|y|on)
+			printf 'true'
+			return 0
+			;;
+		0|false|no|n|off)
+			printf 'false'
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+is_valid_local_base_domain() {
+	local domain normalized
+	domain="$1"
+	normalized="$(printf '%s' "$domain" | tr '[:upper:]' '[:lower:]')"
+
+	if [[ -z "$normalized" ]]; then
+		return 1
+	fi
+
+	if [[ "$normalized" == *" "* || "$normalized" == *"*"* ]]; then
+		return 1
+	fi
+
+	if [[ "$normalized" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.local$ ]]; then
+		return 0
+	fi
+
+	return 1
+}
+
 init_env_file() {
 	if [[ -f "$ENV_PATH" ]]; then
 		log ".env already exists at $ENV_PATH"
@@ -377,6 +417,7 @@ wizard() {
 	local java_jar_default java_port_default java_args_default node_enable_default
 	local node_default_version_default node_versions_default node_nvm_version_default node_global_packages_default
 	local python_enable_default python_ds_default python_dev_mode_default
+	local ssl_enable_default ssl_base_domain_default ssl_cert_expiry_default
 
 	ensure_interactive_terminal
 	detect_wizard_ui_mode
@@ -395,6 +436,9 @@ wizard() {
 	ssh_exp_default="${SSH_KEY_EXPIRATION:-1y}"
 	tmux_default="${TMUX_CONFIG_URL:-}"
 	web_server_default="${WEB_SERVER:-apache}"
+	ssl_enable_default="${WEB_SSL_ENABLE:-false}"
+	ssl_base_domain_default="${WEB_SSL_BASE_DOMAIN:-app.local}"
+	ssl_cert_expiry_default="${WEB_SSL_CERT_EXPIRY:-1y}"
 	php_enable_default="${PHP_ENABLE:-false}"
 	php_version_default="${PHP_VERSION:-7.4}"
 	php_baseline_default="${PHP_EXTENSIONS_BASELINE:-common}"
@@ -455,8 +499,26 @@ wizard() {
 	value="$(read_choice 'WEB_SERVER (apache/nginx/skip)' "$web_server_default" 'apache,nginx,skip')"
 	if [[ "$value" == "skip" ]]; then
 		unset_env_key "WEB_SERVER"
+		set_env_key "WEB_SSL_ENABLE" "false"
+		unset_env_key "WEB_SSL_BASE_DOMAIN"
+		set_env_key "WEB_SSL_CERT_EXPIRY" "$ssl_cert_expiry_default"
 	else
 		set_env_key "WEB_SERVER" "$value"
+		value="$(read_bool 'WEB_SSL_ENABLE (true/false)' "$ssl_enable_default")"
+		set_env_key "WEB_SSL_ENABLE" "$value"
+		set_env_key "WEB_SSL_CERT_EXPIRY" "$ssl_cert_expiry_default"
+		if [[ "$value" == "true" ]]; then
+			while true; do
+				value="$(read_with_default 'WEB_SSL_BASE_DOMAIN (must end in .local, example: app.local)' "$ssl_base_domain_default")"
+				if is_valid_local_base_domain "$value"; then
+					break
+				fi
+				echo "Invalid WEB_SSL_BASE_DOMAIN. Use a base domain like app.local (must end in .local, no wildcard)."
+			done
+			set_env_key "WEB_SSL_BASE_DOMAIN" "$value"
+		else
+			unset_env_key "WEB_SSL_BASE_DOMAIN"
+		fi
 	fi
 
 	value="$(read_bool 'PHP_ENABLE (true/false)' "$php_enable_default")"
@@ -629,6 +691,34 @@ validate_core_identity_env() {
 	fi
 }
 
+validate_web_ssl_env() {
+	local web_server web_ssl_enable web_ssl_base_domain web_ssl_cert_expiry normalized_ssl
+
+	web_server="${WEB_SERVER:-}"
+	web_ssl_enable="${WEB_SSL_ENABLE:-false}"
+	web_ssl_base_domain="${WEB_SSL_BASE_DOMAIN:-}"
+	web_ssl_cert_expiry="${WEB_SSL_CERT_EXPIRY:-1y}"
+
+	if ! normalized_ssl="$(normalize_bool_local "$web_ssl_enable")"; then
+		fail "Invalid WEB_SSL_ENABLE '$web_ssl_enable'. Supported values: true/false"
+	fi
+	WEB_SSL_ENABLE="$normalized_ssl"
+
+	if [[ "$WEB_SSL_ENABLE" == "true" ]]; then
+		if [[ -z "$web_server" ]]; then
+			fail "WEB_SSL_ENABLE=true requires WEB_SERVER to be set to apache or nginx."
+		fi
+
+		if ! is_valid_local_base_domain "$web_ssl_base_domain"; then
+			fail "Invalid WEB_SSL_BASE_DOMAIN '$web_ssl_base_domain'. Use a base domain like app.local (must end in .local, no wildcard)."
+		fi
+
+		if [[ "$web_ssl_cert_expiry" != "1y" ]]; then
+			fail "WEB_SSL_CERT_EXPIRY must be '1y' for this phase. Current value: '$web_ssl_cert_expiry'."
+		fi
+	fi
+}
+
 validate_with_libs() {
 	validate_core_identity_env
 
@@ -641,6 +731,7 @@ validate_with_libs() {
 			*) fail "Invalid WEB_SERVER '$WEB_SERVER'. Supported values: apache, nginx" ;;
 		esac
 	fi
+	validate_web_ssl_env
 	if php_is_enabled; then
 		validate_php_version
 		validate_php_extensions_baseline
@@ -688,14 +779,34 @@ validate_command() {
 }
 
 plan_command() {
+	local web_summary web_ssl_enable web_ssl_base_domain
+
 	require_env_file
 	validate_with_libs
 	load_env_file
 
+	web_ssl_enable="${WEB_SSL_ENABLE:-false}"
+	web_ssl_base_domain="${WEB_SSL_BASE_DOMAIN:-unset}"
+
+	if [[ -n "${WEB_SERVER:-}" ]]; then
+		web_summary="will run (WEB_SERVER=${WEB_SERVER}"
+		if [[ "$web_ssl_enable" == "true" ]]; then
+			if [[ "$WEB_SERVER" == "apache" ]]; then
+				web_summary+="; SSL=true; base_domain=${web_ssl_base_domain}; ssl_execution=active)"
+			else
+				web_summary+="; SSL=true; base_domain=${web_ssl_base_domain}; ssl_execution=deferred)"
+			fi
+		else
+			web_summary+="; SSL=false)"
+		fi
+	else
+		web_summary="skip (WEB_SERVER not set)"
+	fi
+
 	echo "Provisioning plan:"
 	echo "- tmux: $(if [[ -n "${TMUX_CONFIG_URL:-}" ]]; then echo "will run (TMUX_CONFIG_URL set)"; else echo "skip (TMUX_CONFIG_URL not set)"; fi)"
 	echo "- vim: will run"
-	echo "- web: $(if [[ -n "${WEB_SERVER:-}" ]]; then echo "will run (WEB_SERVER=${WEB_SERVER})"; else echo "skip (WEB_SERVER not set)"; fi)"
+	echo "- web: $web_summary"
 	echo "- database: $(if [[ "${DATABASE_TYPE:-none}" != "none" ]]; then echo "will run (DATABASE_TYPE=${DATABASE_TYPE})"; else echo "skip (DATABASE_TYPE=none)"; fi)"
 	echo "- redis: $(if [[ "${REDIS_ENABLE:-false}" == "true" ]]; then echo "will run"; else echo "skip (REDIS_ENABLE=false)"; fi)"
 	echo "- java: $(if [[ "${JAVA_ENABLE:-false}" == "true" ]]; then echo "will run (mode=${JAVA_SERVER_MODE:-tomcat})"; else echo "skip (JAVA_ENABLE=false)"; fi)"

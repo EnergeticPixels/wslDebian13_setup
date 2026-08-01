@@ -80,6 +80,46 @@ Config helpers:
 ./provisioning.sh config unset TMUX_CONFIG_URL
 ```
 
+### Local DNS requirement for .local developer URLs
+
+When using web SSL with a custom `.local` URL, you must add that URL to the host machine HOSTS file.
+If this is skipped, the URL will not resolve from outside Debian (for example, from a browser on the host OS).
+
+Map the selected `WEB_SSL_BASE_DOMAIN` to one of the following:
+- `127.0.0.1` when traffic is forwarded to localhost
+- Debian WSL2 guest IP when resolving directly to the guest
+
+Example HOSTS entries:
+
+```text
+127.0.0.1 app.local
+172.26.227.15 app.local
+```
+
+Use one mapping that matches your networking setup. Do not keep conflicting entries for the same host name.
+
+### Windows browser trust for mkcert certificates
+
+If Edge or Chrome on Windows shows Not Secure for your local HTTPS URL, import the mkcert root CA into Windows Trusted Root Certification Authorities.
+
+In Debian/WSL:
+
+```bash
+sudo mkcert -CAROOT
+```
+
+This prints the CA directory used by the provisioning run. When provisioning is run with sudo, this is usually under /root/.local/share/mkcert.
+
+Copy rootCA.pem from that directory to Windows, then in Windows PowerShell (Run as Administrator):
+
+```powershell
+certutil -addstore -f Root "C:\path\to\rootCA.pem"
+```
+
+After import:
+- fully close and reopen Edge or Chrome
+- verify URL resolution still points to your intended target in the Windows HOSTS file
+
 Other helpers:
 
 ```bash

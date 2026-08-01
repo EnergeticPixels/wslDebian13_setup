@@ -22,6 +22,17 @@ sudo apt dist-upgrade
 2. Edit values based on your setup profile
 3. Run `sudo bash begin_here.sh`
 
+## Hostname resolution for local SSL URLs
+
+If you enable web SSL and choose a `.local` developer URL, add that URL to the host machine HOSTS file.
+Without this step, the URL will not resolve from outside the Debian guest environment.
+
+Recommended mapping targets:
+- `127.0.0.1` (localhost routing)
+- Debian 13 WSL2 guest IP (direct guest routing)
+
+Use only the mapping that matches your setup.
+
 ## Common profile patterns
 
 - Minimal shell + Git: enable only core settings

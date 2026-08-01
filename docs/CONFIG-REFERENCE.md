@@ -42,12 +42,20 @@ Central reference for frequently used `.env` variables.
 
 - `WEB_SERVER=apache|nginx`
 - `web_server` (compatibility key)
+- `WEB_SSL_ENABLE=true|false`
+- `WEB_SSL_BASE_DOMAIN` (base domain only, must end in `.local`, example: `app.local`)
+- `WEB_SSL_CERT_EXPIRY=1y` (fixed to one year in current phase)
 - `PHP_ENABLE=true|false`
 - `PHP_VERSION=7.4|8.0|8.1|8.2|8.3`
 - `PHP_EXTENSIONS_BASELINE=common|none`
 - `PHP_EXTENSIONS_EXTRA` (comma-separated)
 - `PHP_EXTENSIONS_STRICT=true|false`
 - `PHP_DB_DRIVER_MODE=auto|mysql|postgres|none`
+
+SSL behavior in current phase:
+- Apache: SSL execution active when `WEB_SSL_ENABLE=true`
+- Nginx: SSL intent is captured, but execution is deferred
+- Certificate SANs are generated for base domain and wildcard (`app.local` + `*.app.local`)
 
 Baseline map:
 - `common`: `mbstring`, `xml`, `curl`, `zip`, `intl`, `gd`, `bcmath`, `opcache`, `readline`

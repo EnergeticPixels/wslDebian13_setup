@@ -42,6 +42,15 @@ load_web_stack_env() {
 	if [[ -z "${PHP_DB_DRIVER_MODE:-}" && -n "${php_db_driver_mode:-}" ]]; then
 		PHP_DB_DRIVER_MODE="$php_db_driver_mode"
 	fi
+	if [[ -z "${WEB_SSL_ENABLE:-}" && -n "${web_ssl_enable:-}" ]]; then
+		WEB_SSL_ENABLE="$web_ssl_enable"
+	fi
+	if [[ -z "${WEB_SSL_BASE_DOMAIN:-}" && -n "${web_ssl_base_domain:-}" ]]; then
+		WEB_SSL_BASE_DOMAIN="$web_ssl_base_domain"
+	fi
+	if [[ -z "${WEB_SSL_CERT_EXPIRY:-}" && -n "${web_ssl_cert_expiry:-}" ]]; then
+		WEB_SSL_CERT_EXPIRY="$web_ssl_cert_expiry"
+	fi
 
 	PHP_ENABLE="${PHP_ENABLE:-false}"
 	PHP_VERSION="${PHP_VERSION:-7.4}"
@@ -50,6 +59,9 @@ load_web_stack_env() {
 	PHP_EXTENSIONS_STRICT="${PHP_EXTENSIONS_STRICT:-true}"
 	DATABASE_TYPE="${DATABASE_TYPE:-none}"
 	PHP_DB_DRIVER_MODE="${PHP_DB_DRIVER_MODE:-auto}"
+	WEB_SSL_ENABLE="${WEB_SSL_ENABLE:-false}"
+	WEB_SSL_BASE_DOMAIN="${WEB_SSL_BASE_DOMAIN:-app.local}"
+	WEB_SSL_CERT_EXPIRY="${WEB_SSL_CERT_EXPIRY:-1y}"
 
 	case "$(printf '%s' "$PHP_ENABLE" | tr '[:upper:]' '[:lower:]')" in
 		1|true|yes|y|on)
@@ -77,8 +89,22 @@ load_web_stack_env() {
 			;;
 	esac
 
+	case "$(printf '%s' "$WEB_SSL_ENABLE" | tr '[:upper:]' '[:lower:]')" in
+		1|true|yes|y|on)
+			WEB_SSL_ENABLE=true
+			;;
+		0|false|no|n|off)
+			WEB_SSL_ENABLE=false
+			;;
+		*)
+			echo "Invalid WEB_SSL_ENABLE '$WEB_SSL_ENABLE'. Supported values: true/false" >&2
+			exit 1
+			;;
+	esac
+
 	DATABASE_TYPE="$(printf '%s' "$DATABASE_TYPE" | tr '[:upper:]' '[:lower:]')"
 	PHP_DB_DRIVER_MODE="$(printf '%s' "$PHP_DB_DRIVER_MODE" | tr '[:upper:]' '[:lower:]')"
+	WEB_SSL_BASE_DOMAIN="$(printf '%s' "$WEB_SSL_BASE_DOMAIN" | tr '[:upper:]' '[:lower:]')"
 
 	case "$PHP_DB_DRIVER_MODE" in
 		auto|none|mysql|postgres)
@@ -97,6 +123,13 @@ load_web_stack_env() {
 	export PHP_EXTENSIONS_STRICT
 	export DATABASE_TYPE
 	export PHP_DB_DRIVER_MODE
+	export WEB_SSL_ENABLE
+	export WEB_SSL_BASE_DOMAIN
+	export WEB_SSL_CERT_EXPIRY
+}
+
+web_ssl_is_enabled() {
+	[[ "$WEB_SSL_ENABLE" == "true" ]]
 }
 
 validate_php_version() {
