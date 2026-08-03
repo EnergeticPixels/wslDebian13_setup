@@ -30,7 +30,7 @@ chmod +x provisioning.sh begin_here.sh
 # Create .env from .env.sample
 ./provisioning.sh init
 
-# Interactive setup (whiptail if available, plain prompts otherwise)
+# Interactive setup
 ./provisioning.sh wizard
 
 # Validate settings and preview plan
@@ -44,9 +44,7 @@ sudo bash ./provisioning.sh run
 ### Terminal interface (`provisioning.sh`)
 
 You can use `provisioning.sh` as a terminal interface for `.env`-driven provisioning.
-When available in an interactive shell, the wizard uses `whiptail` menu screens.
-If `whiptail` is unavailable, it automatically falls back to plain prompts.
-At wizard startup, it logs which mode is being used.
+The wizard always uses plain text question-and-answer prompts in the terminal.
 
 ```bash
 # Create .env from .env.sample
@@ -54,9 +52,6 @@ At wizard startup, it logs which mode is being used.
 
 # Run interactive configuration wizard
 ./provisioning.sh wizard
-
-# Force plain prompt mode even if whiptail is installed
-PROVISIONING_NO_WHIPTAIL=true ./provisioning.sh wizard
 
 # Validate current .env values against script validators
 ./provisioning.sh validate
