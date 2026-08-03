@@ -849,6 +849,11 @@ run_core_script() {
 		esac
 	fi
 
+	if [[ "$script_name" == "tmux_install.sh" ]]; then
+		PROVISIONING_NONINTERACTIVE=true bash "$script_path"
+		return 0
+	fi
+
 	bash "$script_path"
 }
 
@@ -919,7 +924,7 @@ run_command() {
 		return 0
 	fi
 
-	bash "$ROOT_DIR/begin_here.sh"
+	PROVISIONING_NONINTERACTIVE=true bash "$ROOT_DIR/begin_here.sh"
 }
 
 logs_command() {

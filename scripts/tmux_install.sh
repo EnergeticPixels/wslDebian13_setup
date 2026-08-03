@@ -22,6 +22,11 @@ if [[ -z "${TMUX_CONFIG_URL:-}" && -n "${tmux_config_url:-}" ]]; then
 fi
 
 if [[ -z "${TMUX_CONFIG_URL:-}" ]]; then
+	if [[ "${PROVISIONING_NONINTERACTIVE:-false}" == "true" ]]; then
+		log "No TMUX_CONFIG_URL configured in non-interactive provisioning mode. Skipping tmux setup."
+		exit 0
+	fi
+
 	if [[ -t 0 ]]; then
 		log "No TMUX_CONFIG_URL found in .env."
 		read -r -p "Enter raw gist URL for .tmux.conf (leave empty to skip tmux setup): " user_tmux_url
