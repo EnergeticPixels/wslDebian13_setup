@@ -642,10 +642,31 @@ wizard() {
 	fi
 
 	echo ""
-	log "Wizard complete. Next steps:"
-	echo "  1) ./provisioning.sh validate"
-	echo "  2) ./provisioning.sh plan"
-	echo "  3) sudo bash ./provisioning.sh run"
+	log "Wizard configuration saved."
+}
+
+wizard_command() {
+	local proceed
+
+	while true; do
+		wizard
+		echo ""
+		plan_command
+		echo ""
+		proceed="$(read_bool 'Proceed with provisioning?' 'true')"
+
+		if [[ "$proceed" == "true" ]]; then
+			if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+				run_command
+			else
+				sudo bash "$ROOT_DIR/provisioning.sh" run
+			fi
+			return 0
+		fi
+
+		log "Plan rejected. Restarting wizard."
+		echo ""
+	done
 }
 
 validate_node_env() {
@@ -1156,7 +1177,7 @@ main() {
 
 	case "$command" in
 		init) init_env_file ;;
-		wizard) wizard ;;
+		wizard) wizard_command ;;
 		config) config_command "$@" ;;
 		validate) validate_command ;;
 		plan) plan_command ;;
