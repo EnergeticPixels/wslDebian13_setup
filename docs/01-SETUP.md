@@ -20,7 +20,9 @@ sudo apt dist-upgrade
 
 1. Copy `.env.sample` to `.env`
 2. Edit values based on your setup profile
-3. Run `sudo bash begin_here.sh`
+3. Run `./provisioning.sh wizard` to review the generated plan and confirm the provisioning run
+
+The wizard can also create `.env` when it is missing. Use `./provisioning.sh validate` or `./provisioning.sh plan` independently when needed.
 
 ## Hostname resolution for local SSL URLs
 
