@@ -421,7 +421,7 @@ whiptail_menu() {
 }
 
 wizard() {
-	local value selected_java_mode git_name_default git_email_default gpg_exp_default ssh_exp_default
+	local value selected_web_server selected_database_type selected_java_mode git_name_default git_email_default gpg_exp_default ssh_exp_default
 	local tmux_default web_server_default php_enable_default php_version_default php_baseline_default
 	local php_extra_default php_strict_default php_db_mode_default database_type_default db_setup_default
 	local mariadb_version_default postgresql_version_default mongodb_version_default
@@ -510,15 +510,15 @@ wizard() {
 		unset_env_key "TMUX_CONFIG_URL"
 	fi
 
-	value="$(read_choice 'WEB_SERVER (apache/nginx/skip)' "$web_server_default" 'apache,nginx,skip')"
-	if [[ "$value" == "skip" ]]; then
+	selected_web_server="$(read_choice 'WEB_SERVER (apache/nginx/skip)' "$web_server_default" 'apache,nginx,skip')"
+	if [[ "$selected_web_server" == "skip" ]]; then
 		unset_env_key "WEB_SERVER"
 		set_env_key "WEB_SSL_ENABLE" "false"
 		unset_env_key "WEB_SSL_BASE_DOMAIN"
 		set_env_key "WEB_SSL_CERT_EXPIRY" "$ssl_cert_expiry_default"
 		set_env_key "WEB_SSL_FORCE_HTTPS_REDIRECT" "$ssl_redirect_default"
 	else
-		set_env_key "WEB_SERVER" "$value"
+		set_env_key "WEB_SERVER" "$selected_web_server"
 		value="$(read_bool 'WEB_SSL_ENABLE (true/false)' "$ssl_enable_default")"
 		set_env_key "WEB_SSL_ENABLE" "$value"
 		ssl_enable_choice="$value"
@@ -539,55 +539,22 @@ wizard() {
 		fi
 	fi
 
-	value="$(read_bool 'PHP_ENABLE (true/false)' "$php_enable_default")"
-	set_env_key "PHP_ENABLE" "$value"
-	if [[ "$value" == "true" ]]; then
-		value="$(read_choice 'PHP_VERSION' "$php_version_default" '7.4,8.0,8.1,8.2,8.3')"
-		set_env_key "PHP_VERSION" "$value"
-		value="$(read_choice 'PHP_EXTENSIONS_BASELINE (common/none)' "$php_baseline_default" 'common,none')"
-		set_env_key "PHP_EXTENSIONS_BASELINE" "$value"
-		value="$(read_with_default 'PHP_EXTENSIONS_EXTRA (comma-separated)' "$php_extra_default")"
-		set_env_key "PHP_EXTENSIONS_EXTRA" "$value"
-		value="$(read_bool 'PHP_EXTENSIONS_STRICT (true/false)' "$php_strict_default")"
-		set_env_key "PHP_EXTENSIONS_STRICT" "$value"
-		value="$(read_choice 'PHP_DB_DRIVER_MODE (auto/mysql/postgres/none)' "$php_db_mode_default" 'auto,mysql,postgres,none')"
-		set_env_key "PHP_DB_DRIVER_MODE" "$value"
+	if [[ "$selected_web_server" != "skip" ]]; then
+		value="$(read_bool 'PHP_ENABLE (true/false)' "$php_enable_default")"
+		set_env_key "PHP_ENABLE" "$value"
+		if [[ "$value" == "true" ]]; then
+			value="$(read_choice 'PHP_VERSION' "$php_version_default" '7.4,8.0,8.1,8.2,8.3')"
+			set_env_key "PHP_VERSION" "$value"
+			value="$(read_choice 'PHP_EXTENSIONS_BASELINE (common/none)' "$php_baseline_default" 'common,none')"
+			set_env_key "PHP_EXTENSIONS_BASELINE" "$value"
+			value="$(read_with_default 'PHP_EXTENSIONS_EXTRA (comma-separated)' "$php_extra_default")"
+			set_env_key "PHP_EXTENSIONS_EXTRA" "$value"
+			value="$(read_bool 'PHP_EXTENSIONS_STRICT (true/false)' "$php_strict_default")"
+			set_env_key "PHP_EXTENSIONS_STRICT" "$value"
+			value="$(read_choice 'PHP_DB_DRIVER_MODE (auto/mysql/postgres/none)' "$php_db_mode_default" 'auto,mysql,postgres,none')"
+			set_env_key "PHP_DB_DRIVER_MODE" "$value"
+		fi
 	fi
-
-	value="$(read_choice 'DATABASE_TYPE (none/mysql/postgres/mongodb)' "$database_type_default" 'none,mysql,postgres,mongodb')"
-	set_env_key "DATABASE_TYPE" "$value"
-	case "$value" in
-		mysql)
-			value="$(read_with_default 'MARIADB_VERSION' "$mariadb_version_default")"
-			set_env_key "MARIADB_VERSION" "$value"
-			;;
-		postgres)
-			value="$(read_with_default 'POSTGRESQL_VERSION' "$postgresql_version_default")"
-			set_env_key "POSTGRESQL_VERSION" "$value"
-			;;
-		mongodb)
-			value="$(read_with_default 'MONGODB_VERSION' "$mongodb_version_default")"
-			set_env_key "MONGODB_VERSION" "$value"
-			;;
-	esac
-
-	value="$(read_bool 'DB_DEV_SETUP (true/false)' "$db_setup_default")"
-	set_env_key "DB_DEV_SETUP" "$value"
-	if [[ "$value" == "true" ]]; then
-		value="$(read_with_default 'DB_DEV_DB_NAME' "$db_name_default")"
-		set_env_key "DB_DEV_DB_NAME" "$value"
-		value="$(read_with_default 'DB_DEV_USER' "$db_user_default")"
-		set_env_key "DB_DEV_USER" "$value"
-		value="$(read_with_default 'DB_DEV_PASSWORD' "$db_password_default")"
-		set_env_key "DB_DEV_PASSWORD" "$value"
-		value="$(read_with_default 'DB_DEV_USER_HOST' "$db_host_default")"
-		set_env_key "DB_DEV_USER_HOST" "$value"
-	fi
-
-	value="$(read_bool 'REDIS_ENABLE (true/false)' "$redis_enable_default")"
-	set_env_key "REDIS_ENABLE" "$value"
-	value="$(read_with_default 'REDIS_VERSION' "$redis_version_default")"
-	set_env_key "REDIS_VERSION" "$value"
 
 	value="$(read_bool 'JAVA_ENABLE (true/false)' "$java_enable_default")"
 	set_env_key "JAVA_ENABLE" "$value"
@@ -629,6 +596,49 @@ wizard() {
 		set_env_key "PYTHON_DATA_SCIENCE_STACK_ENABLE" "$value"
 		value="$(read_choice 'PYTHON_DEV_MODE (none/flask/reflex/both)' "$python_dev_mode_default" 'none,flask,reflex,both')"
 		set_env_key "PYTHON_DEV_MODE" "$value"
+	fi
+
+	selected_database_type="$(read_choice 'DATABASE_TYPE (none/mysql/postgres/mongodb)' "$database_type_default" 'none,mysql,postgres,mongodb')"
+	set_env_key "DATABASE_TYPE" "$selected_database_type"
+	case "$selected_database_type" in
+		mysql)
+			value="$(read_with_default 'MARIADB_VERSION' "$mariadb_version_default")"
+			set_env_key "MARIADB_VERSION" "$value"
+			;;
+		postgres)
+			value="$(read_with_default 'POSTGRESQL_VERSION' "$postgresql_version_default")"
+			set_env_key "POSTGRESQL_VERSION" "$value"
+			;;
+		mongodb)
+			value="$(read_with_default 'MONGODB_VERSION' "$mongodb_version_default")"
+			set_env_key "MONGODB_VERSION" "$value"
+			;;
+	esac
+
+	if [[ "$selected_database_type" != "none" ]]; then
+		value="$(read_bool 'DB_DEV_SETUP (true/false)' "$db_setup_default")"
+		set_env_key "DB_DEV_SETUP" "$value"
+		if [[ "$value" == "true" ]]; then
+			value="$(read_with_default 'DB_DEV_DB_NAME' "$db_name_default")"
+			set_env_key "DB_DEV_DB_NAME" "$value"
+			value="$(read_with_default 'DB_DEV_USER' "$db_user_default")"
+			set_env_key "DB_DEV_USER" "$value"
+			value="$(read_with_default 'DB_DEV_PASSWORD' "$db_password_default")"
+			set_env_key "DB_DEV_PASSWORD" "$value"
+			value="$(read_with_default 'DB_DEV_USER_HOST' "$db_host_default")"
+			set_env_key "DB_DEV_USER_HOST" "$value"
+		fi
+	else
+		set_env_key "DB_DEV_SETUP" "false"
+	fi
+
+	value="$(read_bool 'REDIS_ENABLE (true/false)' "$redis_enable_default")"
+	set_env_key "REDIS_ENABLE" "$value"
+	if [[ "$value" == "true" ]]; then
+		value="$(read_with_default 'REDIS_VERSION' "$redis_version_default")"
+		set_env_key "REDIS_VERSION" "$value"
+	else
+		set_env_key "REDIS_VERSION" "$redis_version_default"
 	fi
 
 	echo ""
