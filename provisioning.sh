@@ -5,7 +5,6 @@ ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ENV_SAMPLE_PATH="$ROOT_DIR/.env.sample"
 ENV_PATH="$ROOT_DIR/.env"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
-USE_WHIPTAIL_UI=false
 
 BASE_PACKAGES=(
 	ca-certificates
@@ -222,11 +221,6 @@ read_with_default() {
 	prompt="$1"
 	default="$2"
 
-	if [[ "$USE_WHIPTAIL_UI" == "true" ]]; then
-		whiptail_inputbox "$prompt" "$default"
-		return 0
-	fi
-
 	read -r -p "$prompt [$default]: " input
 	if [[ -z "$input" ]]; then
 		printf '%s' "$default"
@@ -239,11 +233,6 @@ read_optional() {
 	local prompt input
 	prompt="$1"
 
-	if [[ "$USE_WHIPTAIL_UI" == "true" ]]; then
-		whiptail_inputbox "$prompt" ""
-		return 0
-	fi
-
 	read -r -p "$prompt (leave empty to skip): " input
 	printf '%s' "$input"
 }
@@ -253,11 +242,6 @@ read_bool() {
 	prompt="$1"
 	default="$2"
 	normalized_default="$(printf '%s' "$default" | tr '[:upper:]' '[:lower:]')"
-
-	if [[ "$USE_WHIPTAIL_UI" == "true" ]]; then
-		whiptail_yesno "$prompt" "$normalized_default"
-		return 0
-	fi
 
 	while true; do
 		read -r -p "$prompt [$normalized_default]: " input
@@ -288,11 +272,6 @@ read_choice() {
 	allowed_csv="$3"
 	normalized="$(printf '%s' "$default" | tr '[:upper:]' '[:lower:]')"
 
-	if [[ "$USE_WHIPTAIL_UI" == "true" ]]; then
-		whiptail_menu "$prompt" "$normalized" "$allowed_csv"
-		return 0
-	fi
-
 	while true; do
 		read -r -p "$prompt [$default]: " input
 		input="${input:-$default}"
@@ -322,104 +301,6 @@ ensure_interactive_terminal() {
 	fi
 }
 
-detect_wizard_ui_mode() {
-	if [[ "${PROVISIONING_NO_WHIPTAIL:-false}" == "true" ]]; then
-		USE_WHIPTAIL_UI=false
-		return 0
-	fi
-
-	if command -v whiptail >/dev/null 2>&1 && [[ -t 0 && -t 1 && -t 2 ]]; then
-		USE_WHIPTAIL_UI=true
-		return 0
-	fi
-
-	USE_WHIPTAIL_UI=false
-}
-
-whiptail_inputbox() {
-	local prompt default_value value
-	prompt="$1"
-	default_value="$2"
-
-	if value="$(whiptail --title "Provisioning Wizard" --inputbox "$prompt" 12 78 "$default_value" --output-fd 1)"; then
-		printf '%s' "$value"
-		return 0
-	fi
-
-	fail "Wizard cancelled by user."
-}
-
-whiptail_yesno() {
-	local prompt default_value status
-	prompt="$1"
-	default_value="$2"
-
-	if [[ "$default_value" == "false" ]]; then
-		if whiptail --title "Provisioning Wizard" --defaultno --yesno "$prompt" 10 78; then
-			status=0
-		else
-			status=$?
-		fi
-		case "$status" in
-			0) printf 'true' ;;
-			1) printf 'false' ;;
-			255) fail "Wizard cancelled by user." ;;
-			*) fail "Unexpected whiptail status: $status" ;;
-		esac
-		return 0
-	fi
-
-	if whiptail --title "Provisioning Wizard" --yesno "$prompt" 10 78; then
-		status=0
-	else
-		status=$?
-	fi
-	case "$status" in
-		0) printf 'true' ;;
-		1) printf 'false' ;;
-		255) fail "Wizard cancelled by user." ;;
-		*) fail "Unexpected whiptail status: $status" ;;
-	esac
-}
-
-whiptail_menu() {
-	local prompt default allowed_csv choice
-	local -a raw_tokens tokens items
-	local token
-
-	prompt="$1"
-	default="$2"
-	allowed_csv="$3"
-
-	IFS=',' read -r -a raw_tokens <<< "$allowed_csv"
-
-	for token in "${raw_tokens[@]}"; do
-		token="${token#"${token%%[![:space:]]*}"}"
-		token="${token%"${token##*[![:space:]]}"}"
-		if [[ -n "$token" ]]; then
-			tokens+=("$token")
-		fi
-	done
-
-	for token in "${tokens[@]}"; do
-		if [[ "$token" == "$default" ]]; then
-			items+=("$token" "(default)")
-		fi
-	done
-	for token in "${tokens[@]}"; do
-		if [[ "$token" != "$default" ]]; then
-			items+=("$token" "")
-		fi
-	done
-
-	if choice="$(whiptail --title "Provisioning Wizard" --menu "$prompt" 18 78 10 "${items[@]}" --output-fd 1)"; then
-		printf '%s' "$choice"
-		return 0
-	fi
-
-	fail "Wizard cancelled by user."
-}
-
 wizard() {
 	local value selected_web_server selected_database_type selected_java_mode git_name_default git_email_default gpg_exp_default ssh_exp_default
 	local tmux_default web_server_default php_enable_default php_version_default php_baseline_default
@@ -433,15 +314,9 @@ wizard() {
 	local ssl_enable_default ssl_base_domain_default ssl_cert_expiry_default ssl_redirect_default ssl_enable_choice
 
 	ensure_interactive_terminal
-	detect_wizard_ui_mode
 	init_env_file
 	load_env_file
-
-	if [[ "$USE_WHIPTAIL_UI" == "true" ]]; then
-		log "Wizard UI mode: whiptail menus."
-	else
-		log "Wizard UI mode: plain prompts (whiptail unavailable or disabled)."
-	fi
+	log "Wizard starting with plain prompts."
 
 	git_name_default="${GIT_NAME:-Elmer Humperdinck}"
 	git_email_default="${GIT_EMAIL:-somebody@somewhere.us}"
