@@ -2,7 +2,7 @@
 
 ## SSH and GPG key management
 
-Keys are managed automatically each time `begin_here.sh` runs:
+Keys are managed automatically during each `provisioning.sh run`:
 
 - No key found: a new key is generated.
 - Key exists and healthy (more than 30 days before expiry): skipped; the log records days remaining.

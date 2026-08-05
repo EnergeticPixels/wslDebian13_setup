@@ -6,6 +6,19 @@ ENV_SAMPLE_PATH="$ROOT_DIR/.env.sample"
 ENV_PATH="$ROOT_DIR/.env"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
 
+BASE_PACKAGES=(
+	ca-certificates
+	apt-transport-https
+	curl
+	gnupg2
+	lsb-release
+	git
+	wget
+	build-essential
+	libssl-dev
+	ripgrep
+)
+
 log() {
 	printf '[%s] %s\n' "$(date +'%Y-%m-%d %H:%M:%S')" "$*"
 }
@@ -289,7 +302,7 @@ ensure_interactive_terminal() {
 }
 
 wizard() {
-	local value selected_java_mode git_name_default git_email_default gpg_exp_default ssh_exp_default
+	local value selected_web_server selected_database_type selected_java_mode git_name_default git_email_default gpg_exp_default ssh_exp_default
 	local tmux_default web_server_default php_enable_default php_version_default php_baseline_default
 	local php_extra_default php_strict_default php_db_mode_default database_type_default db_setup_default
 	local mariadb_version_default postgresql_version_default mongodb_version_default
@@ -372,15 +385,15 @@ wizard() {
 		unset_env_key "TMUX_CONFIG_URL"
 	fi
 
-	value="$(read_choice 'WEB_SERVER (apache/nginx/skip)' "$web_server_default" 'apache,nginx,skip')"
-	if [[ "$value" == "skip" ]]; then
+	selected_web_server="$(read_choice 'WEB_SERVER (apache/nginx/skip)' "$web_server_default" 'apache,nginx,skip')"
+	if [[ "$selected_web_server" == "skip" ]]; then
 		unset_env_key "WEB_SERVER"
 		set_env_key "WEB_SSL_ENABLE" "false"
 		unset_env_key "WEB_SSL_BASE_DOMAIN"
 		set_env_key "WEB_SSL_CERT_EXPIRY" "$ssl_cert_expiry_default"
 		set_env_key "WEB_SSL_FORCE_HTTPS_REDIRECT" "$ssl_redirect_default"
 	else
-		set_env_key "WEB_SERVER" "$value"
+		set_env_key "WEB_SERVER" "$selected_web_server"
 		value="$(read_bool 'WEB_SSL_ENABLE (true/false)' "$ssl_enable_default")"
 		set_env_key "WEB_SSL_ENABLE" "$value"
 		ssl_enable_choice="$value"
@@ -401,55 +414,22 @@ wizard() {
 		fi
 	fi
 
-	value="$(read_bool 'PHP_ENABLE (true/false)' "$php_enable_default")"
-	set_env_key "PHP_ENABLE" "$value"
-	if [[ "$value" == "true" ]]; then
-		value="$(read_choice 'PHP_VERSION' "$php_version_default" '7.4,8.0,8.1,8.2,8.3')"
-		set_env_key "PHP_VERSION" "$value"
-		value="$(read_choice 'PHP_EXTENSIONS_BASELINE (common/none)' "$php_baseline_default" 'common,none')"
-		set_env_key "PHP_EXTENSIONS_BASELINE" "$value"
-		value="$(read_with_default 'PHP_EXTENSIONS_EXTRA (comma-separated)' "$php_extra_default")"
-		set_env_key "PHP_EXTENSIONS_EXTRA" "$value"
-		value="$(read_bool 'PHP_EXTENSIONS_STRICT (true/false)' "$php_strict_default")"
-		set_env_key "PHP_EXTENSIONS_STRICT" "$value"
-		value="$(read_choice 'PHP_DB_DRIVER_MODE (auto/mysql/postgres/none)' "$php_db_mode_default" 'auto,mysql,postgres,none')"
-		set_env_key "PHP_DB_DRIVER_MODE" "$value"
+	if [[ "$selected_web_server" != "skip" ]]; then
+		value="$(read_bool 'PHP_ENABLE (true/false)' "$php_enable_default")"
+		set_env_key "PHP_ENABLE" "$value"
+		if [[ "$value" == "true" ]]; then
+			value="$(read_choice 'PHP_VERSION' "$php_version_default" '7.4,8.0,8.1,8.2,8.3')"
+			set_env_key "PHP_VERSION" "$value"
+			value="$(read_choice 'PHP_EXTENSIONS_BASELINE (common/none)' "$php_baseline_default" 'common,none')"
+			set_env_key "PHP_EXTENSIONS_BASELINE" "$value"
+			value="$(read_with_default 'PHP_EXTENSIONS_EXTRA (comma-separated)' "$php_extra_default")"
+			set_env_key "PHP_EXTENSIONS_EXTRA" "$value"
+			value="$(read_bool 'PHP_EXTENSIONS_STRICT (true/false)' "$php_strict_default")"
+			set_env_key "PHP_EXTENSIONS_STRICT" "$value"
+			value="$(read_choice 'PHP_DB_DRIVER_MODE (auto/mysql/postgres/none)' "$php_db_mode_default" 'auto,mysql,postgres,none')"
+			set_env_key "PHP_DB_DRIVER_MODE" "$value"
+		fi
 	fi
-
-	value="$(read_choice 'DATABASE_TYPE (none/mysql/postgres/mongodb)' "$database_type_default" 'none,mysql,postgres,mongodb')"
-	set_env_key "DATABASE_TYPE" "$value"
-	case "$value" in
-		mysql)
-			value="$(read_with_default 'MARIADB_VERSION' "$mariadb_version_default")"
-			set_env_key "MARIADB_VERSION" "$value"
-			;;
-		postgres)
-			value="$(read_with_default 'POSTGRESQL_VERSION' "$postgresql_version_default")"
-			set_env_key "POSTGRESQL_VERSION" "$value"
-			;;
-		mongodb)
-			value="$(read_with_default 'MONGODB_VERSION' "$mongodb_version_default")"
-			set_env_key "MONGODB_VERSION" "$value"
-			;;
-	esac
-
-	value="$(read_bool 'DB_DEV_SETUP (true/false)' "$db_setup_default")"
-	set_env_key "DB_DEV_SETUP" "$value"
-	if [[ "$value" == "true" ]]; then
-		value="$(read_with_default 'DB_DEV_DB_NAME' "$db_name_default")"
-		set_env_key "DB_DEV_DB_NAME" "$value"
-		value="$(read_with_default 'DB_DEV_USER' "$db_user_default")"
-		set_env_key "DB_DEV_USER" "$value"
-		value="$(read_with_default 'DB_DEV_PASSWORD' "$db_password_default")"
-		set_env_key "DB_DEV_PASSWORD" "$value"
-		value="$(read_with_default 'DB_DEV_USER_HOST' "$db_host_default")"
-		set_env_key "DB_DEV_USER_HOST" "$value"
-	fi
-
-	value="$(read_bool 'REDIS_ENABLE (true/false)' "$redis_enable_default")"
-	set_env_key "REDIS_ENABLE" "$value"
-	value="$(read_with_default 'REDIS_VERSION' "$redis_version_default")"
-	set_env_key "REDIS_VERSION" "$value"
 
 	value="$(read_bool 'JAVA_ENABLE (true/false)' "$java_enable_default")"
 	set_env_key "JAVA_ENABLE" "$value"
@@ -493,11 +473,75 @@ wizard() {
 		set_env_key "PYTHON_DEV_MODE" "$value"
 	fi
 
+	selected_database_type="$(read_choice 'DATABASE_TYPE (none/mysql/postgres/mongodb)' "$database_type_default" 'none,mysql,postgres,mongodb')"
+	set_env_key "DATABASE_TYPE" "$selected_database_type"
+	case "$selected_database_type" in
+		mysql)
+			value="$(read_with_default 'MARIADB_VERSION' "$mariadb_version_default")"
+			set_env_key "MARIADB_VERSION" "$value"
+			;;
+		postgres)
+			value="$(read_with_default 'POSTGRESQL_VERSION' "$postgresql_version_default")"
+			set_env_key "POSTGRESQL_VERSION" "$value"
+			;;
+		mongodb)
+			value="$(read_with_default 'MONGODB_VERSION' "$mongodb_version_default")"
+			set_env_key "MONGODB_VERSION" "$value"
+			;;
+	esac
+
+	if [[ "$selected_database_type" != "none" ]]; then
+		value="$(read_bool 'DB_DEV_SETUP (true/false)' "$db_setup_default")"
+		set_env_key "DB_DEV_SETUP" "$value"
+		if [[ "$value" == "true" ]]; then
+			value="$(read_with_default 'DB_DEV_DB_NAME' "$db_name_default")"
+			set_env_key "DB_DEV_DB_NAME" "$value"
+			value="$(read_with_default 'DB_DEV_USER' "$db_user_default")"
+			set_env_key "DB_DEV_USER" "$value"
+			value="$(read_with_default 'DB_DEV_PASSWORD' "$db_password_default")"
+			set_env_key "DB_DEV_PASSWORD" "$value"
+			value="$(read_with_default 'DB_DEV_USER_HOST' "$db_host_default")"
+			set_env_key "DB_DEV_USER_HOST" "$value"
+		fi
+	else
+		set_env_key "DB_DEV_SETUP" "false"
+	fi
+
+	value="$(read_bool 'REDIS_ENABLE (true/false)' "$redis_enable_default")"
+	set_env_key "REDIS_ENABLE" "$value"
+	if [[ "$value" == "true" ]]; then
+		value="$(read_with_default 'REDIS_VERSION' "$redis_version_default")"
+		set_env_key "REDIS_VERSION" "$value"
+	else
+		set_env_key "REDIS_VERSION" "$redis_version_default"
+	fi
+
 	echo ""
-	log "Wizard complete. Next steps:"
-	echo "  1) ./provisioning.sh validate"
-	echo "  2) ./provisioning.sh plan"
-	echo "  3) sudo bash ./provisioning.sh run"
+	log "Wizard configuration saved."
+}
+
+wizard_command() {
+	local proceed
+
+	while true; do
+		wizard
+		echo ""
+		plan_command
+		echo ""
+		proceed="$(read_bool 'Proceed with provisioning?' 'true')"
+
+		if [[ "$proceed" == "true" ]]; then
+			if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+				run_command
+			else
+				sudo bash "$ROOT_DIR/provisioning.sh" run
+			fi
+			return 0
+		fi
+
+		log "Plan rejected. Restarting wizard."
+		echo ""
+	done
 }
 
 validate_node_env() {
@@ -704,6 +748,89 @@ require_root() {
 	fi
 }
 
+bootstrap_env_file() {
+	if [[ ! -f "$ENV_PATH" && -f "$ENV_SAMPLE_PATH" ]]; then
+		cp "$ENV_SAMPLE_PATH" "$ENV_PATH"
+		log "Created $ENV_PATH from .env.sample. Update values before key generation if needed."
+	fi
+}
+
+setup_logging() {
+	local target_user target_home log_dir timestamp log_file_name latest_log_path
+
+	target_user="${SUDO_USER:-}"
+	target_home="$HOME"
+
+	if [[ -n "$target_user" ]]; then
+		target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+	fi
+
+	if [[ -z "$target_home" ]]; then
+		target_home="$HOME"
+	fi
+
+	log_dir="$target_home/.debian_build/logs"
+	timestamp="$(date +'%Y%m%d_%H%M%S')"
+	LOG_FILE="$log_dir/provision_${timestamp}.log"
+	log_file_name="$(basename "$LOG_FILE")"
+	latest_log_path="$log_dir/latest.log"
+
+	mkdir -p "$log_dir"
+	touch "$LOG_FILE"
+	ln -sfn "$log_file_name" "$latest_log_path"
+
+	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "$target_user" ]]; then
+		chown "$target_user:$target_user" "$log_dir" "$LOG_FILE" "$latest_log_path" 2>/dev/null || true
+	fi
+
+	exec > >(tee -a "$LOG_FILE") 2>&1
+	log "Writing detailed log to $LOG_FILE"
+}
+
+show_public_keys() {
+	local target_user target_home gpg_email ssh_pub
+
+	target_user="${SUDO_USER:-}"
+	target_home="$HOME"
+
+	if [[ -n "$target_user" ]]; then
+		target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+		[[ -z "$target_home" ]] && target_home="$HOME"
+	fi
+
+	load_env_file
+	gpg_email="${GIT_EMAIL:-}"
+	ssh_pub="$target_home/.ssh/id_github.pub"
+
+	echo ""
+	echo "======================================================="
+	echo "  PROVISIONING COMPLETE - PUBLIC KEYS"
+	echo "  Copy and paste these into GitHub Settings."
+	echo "======================================================="
+
+	echo ""
+	echo "--- GPG PUBLIC KEY (GitHub Settings > SSH and GPG keys > New GPG key) ---"
+	if [[ -n "$gpg_email" ]] && gpg --armor --export "$gpg_email" 2>/dev/null | grep -q 'BEGIN PGP'; then
+		gpg --armor --export "$gpg_email"
+	else
+		echo "(No GPG key found for $gpg_email)"
+	fi
+
+	echo ""
+	echo "--- SSH PUBLIC KEY (GitHub Settings > SSH and GPG keys > New SSH key) ---"
+	if [[ -f "$ssh_pub" ]]; then
+		cat "$ssh_pub"
+	else
+		echo "(No SSH public key found at $ssh_pub)"
+	fi
+
+	echo ""
+	echo "======================================================="
+	read -rp "Press [Enter] once you have added the keys above to GitHub..."
+	echo "======================================================="
+	echo ""
+}
+
 run_core_script() {
 	local script_path script_name
 	script_path="$1"
@@ -717,7 +844,7 @@ run_core_script() {
 
 	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" ]]; then
 		case "$script_name" in
-			ssh_gen.sh|gpg_gen.sh|git-config.sh|node_install.sh|python_install.sh)
+			ssh_gen.sh|gpg_gen.sh|git-config.sh|node_install.sh)
 				sudo -u "$SUDO_USER" -H bash "$script_path"
 				return 0
 				;;
@@ -760,6 +887,63 @@ run_only_component() {
 	run_core_script "$script_path"
 }
 
+run_full_provisioning() {
+	local keys_changed_flag
+
+	export DEBIAN_FRONTEND=noninteractive
+	setup_logging
+
+	log "Starting Debian provisioning"
+	apt-get update
+	# apt-get dist-upgrade -y
+	apt-get install -y "${BASE_PACKAGES[@]}"
+
+	bootstrap_env_file
+	log "Starting multiplexer setup (tmux)"
+	run_core_script "$SCRIPTS_DIR/tmux_install.sh"
+	log "Completed multiplexer setup (tmux)"
+	log "Starting editor setup (vim)"
+	run_core_script "$SCRIPTS_DIR/vim_install.sh"
+	log "Completed editor setup (vim)"
+	log "Starting web server setup"
+	run_core_script "$SCRIPTS_DIR/web_server_install.sh"
+	log "Completed web server setup"
+	log "Starting database setup"
+	run_core_script "$SCRIPTS_DIR/database_install.sh"
+	log "Completed database setup"
+	log "Starting Redis cache setup"
+	run_core_script "$SCRIPTS_DIR/redis_install.sh"
+	log "Completed Redis cache setup"
+	log "Starting Java server setup"
+	run_core_script "$SCRIPTS_DIR/java_install.sh"
+	log "Completed Java server setup"
+	log "Starting Node.js setup"
+	run_core_script "$SCRIPTS_DIR/node_install.sh"
+	log "Completed Node.js setup"
+	log "Starting Python setup"
+	run_core_script "$SCRIPTS_DIR/python_install.sh"
+	log "Completed Python setup"
+
+	# Export a temp file path so child key scripts can signal that keys changed.
+	keys_changed_flag="$(mktemp)"
+	KEYS_CHANGED_FLAG="$keys_changed_flag"
+	export KEYS_CHANGED_FLAG
+	rm -f "$KEYS_CHANGED_FLAG"
+
+	run_core_script "$SCRIPTS_DIR/ssh_gen.sh"
+	run_core_script "$SCRIPTS_DIR/gpg_gen.sh"
+	run_core_script "$SCRIPTS_DIR/git-config.sh"
+
+	if [[ -f "$KEYS_CHANGED_FLAG" ]]; then
+		rm -f "$KEYS_CHANGED_FLAG"
+		show_public_keys
+	else
+		log "SSH and GPG keys unchanged; skipping public key display."
+	fi
+
+	log "Provisioning complete"
+}
+
 run_command() {
 	local only_component="" dry_run=false arg
 	require_env_file
@@ -795,11 +979,11 @@ run_command() {
 	fi
 
 	if [[ "$dry_run" == "true" ]]; then
-		echo "Would run full provisioning via: $ROOT_DIR/begin_here.sh"
+		echo "Would run full provisioning via: $ROOT_DIR/provisioning.sh run"
 		return 0
 	fi
 
-	PROVISIONING_NONINTERACTIVE=true bash "$ROOT_DIR/begin_here.sh"
+	PROVISIONING_NONINTERACTIVE=true run_full_provisioning
 }
 
 logs_command() {
@@ -868,7 +1052,7 @@ main() {
 
 	case "$command" in
 		init) init_env_file ;;
-		wizard) wizard ;;
+		wizard) wizard_command ;;
 		config) config_command "$@" ;;
 		validate) validate_command ;;
 		plan) plan_command ;;

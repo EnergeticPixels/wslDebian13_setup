@@ -11,21 +11,16 @@ sudo apt dist-upgrade
 
 Keep it inside your Linux home directory in WSL.
 
-## 3) Create local configuration
+## 3) Start the provisioning wizard
 
 ```bash
-cp .env.sample .env
+./provisioning.sh init
+./provisioning.sh wizard
 ```
 
-Edit `.env` to match your setup goals.
+The wizard collects your configuration, displays the plan inline, and starts provisioning after confirmation. Use `./provisioning.sh validate` or `./provisioning.sh plan` separately when needed.
 
-## 4) Run provisioning
-
-```bash
-sudo bash begin_here.sh
-```
-
-## 5) Optional one-component installs
+## 4) Optional one-component installs
 
 ```bash
 sudo bash scripts/git-config.sh

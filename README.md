@@ -13,11 +13,13 @@ sudo apt dist-upgrade
 
 2. Copy this repository into your Linux home directory.
 3. Copy `.env.sample` to `.env` and edit values.
-4. Run full provisioning:
+4. Start the provisioning wizard:
 
 ```bash
-sudo bash begin_here.sh
+./provisioning.sh wizard
 ```
+
+The wizard saves `.env`, displays the provisioning plan, and starts the run after confirmation.
 
 ### Fresh clone quick start (Debian 13 WSL)
 
@@ -25,15 +27,15 @@ If you cloned the repo directly (recommended), run:
 
 ```bash
 cd /path/to/your/cloned/repo
-chmod +x provisioning.sh begin_here.sh
+chmod +x provisioning.sh
 
 # Create .env from .env.sample
 ./provisioning.sh init
 
-# Interactive setup
+# Interactive setup, inline plan review, and confirmation
 ./provisioning.sh wizard
 
-# Validate settings and preview plan
+# Optional validation and plan commands
 ./provisioning.sh validate
 ./provisioning.sh plan
 
@@ -50,7 +52,7 @@ The wizard always uses plain text question-and-answer prompts in the terminal.
 # Create .env from .env.sample
 ./provisioning.sh init
 
-# Run interactive configuration wizard
+# Run interactive configuration, plan review, and confirmation
 ./provisioning.sh wizard
 
 # Validate current .env values against script validators
@@ -129,7 +131,7 @@ sudo bash ./provisioning.sh run --only node --dry-run
 ```
 
 ### SSH and GPG key management
-Keys are managed automatically each time `begin_here.sh` runs:
+Keys are managed automatically during each `provisioning.sh run`:
 
 - [Documentation Home](docs/README.md)
 - [00 - Quickstart](docs/00-QUICKSTART.md)
@@ -144,7 +146,7 @@ Keys are managed automatically each time `begin_here.sh` runs:
 
 ## Script Entry Points
 
-- Full run: `begin_here.sh`
+- Full run: `provisioning.sh`
 - Script directory: `scripts/`
 - Shared libraries: `scripts/lib/`
 
