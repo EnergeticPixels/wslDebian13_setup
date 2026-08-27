@@ -13,8 +13,12 @@ load_java_stack_env() {
 	env_file="$script_dir/../../.env"
 
 	if [[ -f "$env_file" ]]; then
-		# shellcheck source=/dev/null
-		source "$env_file"
+		if [[ -r "$env_file" ]]; then
+			# shellcheck source=/dev/null
+			source "$env_file"
+		else
+			log "Warning: $env_file exists but is not readable by $(id -un). Continuing with exported vars/defaults."
+		fi
 	fi
 
 	# Backward compatibility for lowercase key names.

@@ -28,6 +28,18 @@ fail() {
 	exit 1
 }
 
+ensure_env_file_access() {
+	if [[ ! -f "$ENV_PATH" ]]; then
+		return 0
+	fi
+
+	chmod 600 "$ENV_PATH" 2>/dev/null || true
+
+	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
+		chown "$SUDO_USER:$SUDO_USER" "$ENV_PATH" 2>/dev/null || true
+	fi
+}
+
 usage() {
 	cat <<'EOF'
 Usage:
@@ -111,6 +123,7 @@ set_env_key() {
 	' "$ENV_PATH" > "$temp_file"
 
 	mv "$temp_file" "$ENV_PATH"
+	ensure_env_file_access
 }
 
 unset_env_key() {
@@ -123,6 +136,7 @@ unset_env_key() {
 	temp_file="$(mktemp)"
 	awk -v key="$key" '$0 !~ "^[[:space:]]*" key "=" { print }' "$ENV_PATH" > "$temp_file"
 	mv "$temp_file" "$ENV_PATH"
+	ensure_env_file_access
 }
 
 get_env_key() {
@@ -135,6 +149,9 @@ get_env_key() {
 
 load_env_file() {
 	require_env_file
+	if [[ ! -r "$ENV_PATH" ]]; then
+		fail ".env exists but is not readable by $(id -un): $ENV_PATH. Fix ownership (for example: sudo chown ${SUDO_USER:-$USER}:${SUDO_USER:-$USER} $ENV_PATH && chmod 600 $ENV_PATH)."
+	fi
 	set -a
 	# shellcheck disable=SC1090
 	source "$ENV_PATH"
@@ -204,6 +221,7 @@ is_valid_local_base_domain() {
 
 init_env_file() {
 	if [[ -f "$ENV_PATH" ]]; then
+		ensure_env_file_access
 		log ".env already exists at $ENV_PATH"
 		return 0
 	fi
@@ -213,6 +231,7 @@ init_env_file() {
 	fi
 
 	cp "$ENV_SAMPLE_PATH" "$ENV_PATH"
+	ensure_env_file_access
 	log "Created .env from .env.sample"
 }
 
@@ -753,6 +772,8 @@ bootstrap_env_file() {
 		cp "$ENV_SAMPLE_PATH" "$ENV_PATH"
 		log "Created $ENV_PATH from .env.sample. Update values before key generation if needed."
 	fi
+
+	ensure_env_file_access
 }
 
 setup_logging() {

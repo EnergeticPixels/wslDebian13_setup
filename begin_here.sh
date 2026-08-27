@@ -28,6 +28,21 @@ require_root() {
 	fi
 }
 
+ensure_env_file_access() {
+	local env_file
+	env_file="$SCRIPT_DIR/.env"
+
+	if [[ ! -f "$env_file" ]]; then
+		return 0
+	fi
+
+	chmod 600 "$env_file" 2>/dev/null || true
+
+	if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
+		chown "$SUDO_USER:$SUDO_USER" "$env_file" 2>/dev/null || true
+	fi
+}
+
 bootstrap_env_file() {
 	local env_file="$SCRIPT_DIR/.env"
 	local env_sample_file="$SCRIPT_DIR/.env.sample"
@@ -36,6 +51,8 @@ bootstrap_env_file() {
 		cp "$env_sample_file" "$env_file"
 		log "Created $env_file from .env.sample. Update values before key generation if needed."
 	fi
+
+	ensure_env_file_access
 }
 
 setup_logging() {

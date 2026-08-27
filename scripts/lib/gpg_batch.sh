@@ -11,11 +11,27 @@ load_repo_env() {
     return 1
   fi
 
-  # Export loaded values so child processes (gpg/ssh-keygen) can use them.
-  set -a
-  # shellcheck disable=SC1090
-  source "$env_file"
-  set +a
+  if [[ -r "$env_file" ]]; then
+    # Export loaded values so child processes (gpg/ssh-keygen) can use them.
+    set -a
+    # shellcheck disable=SC1090
+    source "$env_file"
+    set +a
+  else
+    echo "Warning: $env_file exists but is not readable by $(id -un). Falling back to existing environment and defaults." >&2
+  fi
+
+  if [[ -z "${GIT_NAME:-}" ]]; then
+    GIT_NAME="$(git config --global user.name 2>/dev/null || true)"
+  fi
+  if [[ -z "${GIT_EMAIL:-}" ]]; then
+    GIT_EMAIL="$(git config --global user.email 2>/dev/null || true)"
+  fi
+  GPG_EXPIRATION="${GPG_EXPIRATION:-1y}"
+
+  export GIT_NAME
+  export GIT_EMAIL
+  export GPG_EXPIRATION
 }
 
 require_env_vars() {

@@ -12,8 +12,12 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/../.env"
 
 if [[ -f "$ENV_FILE" ]]; then
-	# shellcheck source=/dev/null
-	source "$ENV_FILE"
+	if [[ -r "$ENV_FILE" ]]; then
+		# shellcheck source=/dev/null
+		source "$ENV_FILE"
+	else
+		log "Warning: $ENV_FILE exists but is not readable by $(id -un). Continuing with exported vars/defaults."
+	fi
 fi
 
 # Backward compatibility: allow lowercase key names in older/local .env files.

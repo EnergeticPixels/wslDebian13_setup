@@ -10,8 +10,12 @@ ENV_FILE="$SCRIPT_DIR/../.env"
 
 load_node_env() {
 	if [[ -f "$ENV_FILE" ]]; then
-		# shellcheck source=/dev/null
-		source "$ENV_FILE"
+		if [[ -r "$ENV_FILE" ]]; then
+			# shellcheck source=/dev/null
+			source "$ENV_FILE"
+		else
+			log "Warning: $ENV_FILE exists but is not readable by $(id -un). Continuing with exported vars/defaults."
+		fi
 	fi
 
 	if [[ -z "${NODE_ENABLE:-}" && -n "${node_enable:-}" ]]; then
